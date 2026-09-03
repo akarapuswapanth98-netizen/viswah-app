@@ -1,0 +1,43 @@
+# Viswah Backend - Python Dependencies
+
+# Web Framework
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.13.0
+psycopg2-binary==2.9.9
+redis==5.0.1
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
+
+# AI/ML
+openai==1.6.1
+anthropic==0.8.0
+tensorflow==2.15.0
+torch==2.1.2
+torchaudio==2.1.2
+
+# Speech Analysis
+google-cloud-speech==2.23.0
+librosa==0.10.1
+soundfile==0.12.1
+pydub==0.25.1
+
+# Audio Processing
+numpy==1.26.2
+scipy==1.11.4
+matplotlib==3.8.2
+
+# API & Utilities
+httpx==0.25.2
+pydantic==2.5.2
+python-multipart==0.0.6
+
+# ElevenLabs TTS (for Vocal Guru)
+elevenlabs==0.2.26
