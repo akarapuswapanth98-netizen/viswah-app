@@ -9,7 +9,7 @@ from models.models import Course, Lesson, Progress, UserCourse, User
 from models.schemas import (
     CourseResponse, LessonResponse, ProgressUpdate, ProgressPatch,
     ProgressResponse, EnrollmentResponse, EnrolledCourseResponse,
-    ErrorResponse, SuccessResponse
+    ErrorResponse, SuccessResponse, InstrumentType
 )
 from routes.auth import get_current_user
 
@@ -30,7 +30,7 @@ router = APIRouter(
 )
 def get_courses(
     stage: int = None,
-    instrument: str = None,
+    instrument: InstrumentType = None,
     db: Session = Depends(get_db)
 ):
     """Get all courses with optional filters"""
@@ -38,7 +38,7 @@ def get_courses(
     if stage:
         query = query.filter(Course.stage == stage)
     if instrument:
-        query = query.filter(Course.instrument == instrument)
+        query = query.filter(Course.instrument == instrument.value)
     return query.all()
 
 

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from models.schemas import (
     LessonGenerateRequest, LessonGenerateResponse,
     ExerciseGenerateRequest, ExerciseResponse,
-    TopicsResponse, ErrorResponse
+    TopicsResponse, ErrorResponse, InstrumentType, DifficultyLevel
 )
 from services.ai_lesson_generator import generate_lesson, generate_practice_exercise
 from models.models import User
@@ -73,9 +73,9 @@ def create_exercise(
     }
 )
 def get_topics(
-    instrument: str,
-    difficulty: str,
-    current_user: User = Depends(get_current_user)  # Fix #3: Add auth
+    instrument: InstrumentType,
+    difficulty: DifficultyLevel,
+    current_user: User = Depends(get_current_user)
 ):
     """Get available topics for a given instrument and difficulty (requires auth)"""
 
@@ -151,21 +151,12 @@ def get_topics(
         }
     }
 
-    # Validate inputs
-    if instrument not in topics:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid instrument. Must be: vocal, piano, drums"
-        )
-
-    if difficulty not in topics[instrument]:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid difficulty. Must be: beginner, intermediate, advanced"
-        )
+    # Get enum values
+    instrument_val = instrument.value
+    difficulty_val = difficulty.value
 
     return TopicsResponse(
-        instrument=instrument,
-        difficulty=difficulty,
-        topics=topics[instrument][difficulty]
+        instrument=instrument_val,
+        difficulty=difficulty_val,
+        topics=topics[instrument_val][difficulty_val]
     )

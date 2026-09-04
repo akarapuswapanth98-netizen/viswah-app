@@ -32,7 +32,7 @@ class LessonType(str, Enum):
 # ============ Auth Schemas ============
 
 class UserCreate(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
+    username: str = Field(..., min_length=4, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100)
 
@@ -117,7 +117,7 @@ class ProgressUpdate(BaseModel):
 
 
 class ProgressPatch(BaseModel):
-    """Fix #11: Partial update for progress"""
+    """Partial update for progress"""
     completed: Optional[bool] = None
     score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
     time_spent_minutes: Optional[int] = Field(default=None, ge=0)
@@ -160,8 +160,8 @@ class QuizQuestion(BaseModel):
 class LessonGenerateResponse(BaseModel):
     title: str
     content: str
-    quiz_questions: List[QuizQuestion]
-    tips: List[str]
+    quiz_questions: List[QuizQuestion] = Field(..., min_items=1)
+    tips: List[str] = Field(..., min_items=1)
 
 
 class ExerciseGenerateRequest(BaseModel):
@@ -171,7 +171,7 @@ class ExerciseGenerateRequest(BaseModel):
 
 class ExerciseResponse(BaseModel):
     exercise_name: str
-    instructions: List[str]
+    instructions: List[str] = Field(..., min_items=1)
     duration: str
     success_criteria: str
 
