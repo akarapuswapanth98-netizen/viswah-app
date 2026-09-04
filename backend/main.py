@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from database import engine, Base
 from models.schemas import SuccessResponse
-from routes import auth, courses, ai_routes
+from routes import auth, courses, ai_routes, vocal_guru
 
 load_dotenv()
 
@@ -32,6 +32,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(courses.router)
 app.include_router(ai_routes.router)
+app.include_router(vocal_guru.router)
 
 
 @app.get("/", response_model=SuccessResponse, tags=["System"])

@@ -9,6 +9,7 @@ import LessonScreen from './src/screens/LessonScreen';
 import QuizScreen from './src/screens/QuizScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import VocalGuruScreen from './src/screens/VocalGuruScreen';
 
 const Stack = createStackNavigator();
 
@@ -24,6 +25,7 @@ export default function App() {
         <Stack.Navigator initialRouteName="Home">
           <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Viswah' }} />
           <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
+          <Stack.Screen name="VocalGuru" component={VocalGuruScreen} options={{ title: 'Vocal Guru' }} />
           <Stack.Screen name="Course" component={CourseScreen} options={{ title: 'Course' }} />
           <Stack.Screen name="Lesson" component={LessonScreen} options={{ title: 'Lesson' }} />
           <Stack.Screen name="Quiz" component={QuizScreen} options={{ title: 'Quiz' }} />

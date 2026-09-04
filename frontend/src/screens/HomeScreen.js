@@ -63,6 +63,16 @@ const HomeScreen = ({ navigation }) => {
         <Paragraph style={styles.headerSub}>Start your music journey</Paragraph>
       </View>
 
+      {/* Vocal Guru Quick Access */}
+      <TouchableOpacity onPress={() => navigation.navigate('VocalGuru')} style={styles.guruBanner}>
+        <MaterialCommunityIcons name="account-music" size={32} color="white" />
+        <View style={styles.guruBannerText}>
+          <Title style={styles.guruTitle}>Vocal Guru</Title>
+          <Paragraph style={styles.guruSub}>Learn from AI music instructors</Paragraph>
+        </View>
+        <MaterialCommunityIcons name="chevron-right" size={24} color="white" />
+      </TouchableOpacity>
+
       <Searchbar placeholder="Search..." onChangeText={setSearchQuery} value={searchQuery} style={styles.search} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
@@ -104,6 +114,10 @@ const styles = StyleSheet.create({
   header: { padding: 20, backgroundColor: '#6200EE' },
   headerTitle: { color: 'white', fontSize: 24 },
   headerSub: { color: 'white', opacity: 0.8 },
+  guruBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#9C27B0', margin: 16, padding: 16, borderRadius: 12 },
+  guruBannerText: { flex: 1, marginLeft: 12 },
+  guruTitle: { color: 'white', fontSize: 18 },
+  guruSub: { color: 'white', opacity: 0.8, fontSize: 12 },
   search: { margin: 16, elevation: 2 },
   chips: { paddingHorizontal: 16, marginBottom: 8 },
   chip: { marginRight: 8 },
