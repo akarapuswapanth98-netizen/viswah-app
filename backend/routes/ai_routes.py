@@ -1,20 +1,33 @@
-# AI Lesson Routes
+# AI Lesson Routes - Fixed
 
-from fastapi import APIRouter, Depends
-from models.schemas import LessonGenerateRequest, LessonGenerateResponse
+from fastapi import APIRouter, Depends, HTTPException, status
+from models.schemas import (
+    LessonGenerateRequest, LessonGenerateResponse,
+    ExerciseGenerateRequest, ExerciseResponse,
+    TopicsResponse, ErrorResponse
+)
 from services.ai_lesson_generator import generate_lesson, generate_practice_exercise
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(
+    prefix="/api/ai",
+    tags=["AI Lesson Generator"]
+)
 
 
-@router.post("/generate-lesson", response_model=LessonGenerateResponse)
+@router.post(
+    "/generate-lesson",
+    response_model=LessonGenerateResponse,
+    responses={
+        422: {"model": ErrorResponse, "description": "Validation error"}
+    }
+)
 def create_lesson(request: LessonGenerateRequest):
-    """Generate a new lesson using AI"""
+    """Generate a new music lesson using AI"""
     lesson = generate_lesson(
         topic=request.topic,
-        difficulty=request.difficulty,
-        instrument=request.instrument,
-        lesson_type=request.lesson_type
+        difficulty=request.difficulty.value,
+        instrument=request.instrument.value,
+        lesson_type=request.lesson_type.value
     )
 
     return LessonGenerateResponse(
@@ -25,14 +38,29 @@ def create_lesson(request: LessonGenerateRequest):
     )
 
 
-@router.post("/generate-exercise")
-def create_exercise(topic: str, skill_level: str):
+@router.post(
+    "/generate-exercise",
+    response_model=ExerciseResponse,
+    responses={
+        422: {"model": ErrorResponse, "description": "Validation error"}
+    }
+)
+def create_exercise(request: ExerciseGenerateRequest):
     """Generate a practice exercise"""
-    exercise = generate_practice_exercise(topic, skill_level)
-    return exercise
+    exercise = generate_practice_exercise(
+        topic=request.topic,
+        skill_level=request.skill_level.value
+    )
+    return ExerciseResponse(**exercise)
 
 
-@router.get("/topics/{instrument}/{difficulty}")
+@router.get(
+    "/topics/{instrument}/{difficulty}",
+    response_model=TopicsResponse,
+    responses={
+        422: {"model": ErrorResponse, "description": "Invalid instrument or difficulty"}
+    }
+)
 def get_topics(instrument: str, difficulty: str):
     """Get available topics for a given instrument and difficulty"""
 
@@ -108,11 +136,21 @@ def get_topics(instrument: str, difficulty: str):
         }
     }
 
-    instrument_topics = topics.get(instrument, {})
-    difficulty_topics = instrument_topics.get(difficulty, [])
+    # Validate inputs
+    if instrument not in topics:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid instrument. Must be: vocal, piano, drums"
+        )
 
-    return {
-        "instrument": instrument,
-        "difficulty": difficulty,
-        "topics": difficulty_topics
-    }
+    if difficulty not in topics[instrument]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid difficulty. Must be: beginner, intermediate, advanced"
+        )
+
+    return TopicsResponse(
+        instrument=instrument,
+        difficulty=difficulty,
+        topics=topics[instrument][difficulty]
+    )

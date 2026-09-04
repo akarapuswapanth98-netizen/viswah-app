@@ -1,8 +1,9 @@
-# Viswah Backend - FastAPI Main
+# Viswah Backend - FastAPI Main - Fixed
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
+from models.schemas import SuccessResponse
 
 # Import routes
 from routes import auth, courses, ai_routes
@@ -31,18 +32,26 @@ app.include_router(courses.router)
 app.include_router(ai_routes.router)
 
 
-@app.get("/")
+@app.get(
+    "/",
+    response_model=SuccessResponse,
+    tags=["System"]
+)
 def root():
-    return {
-        "message": "Welcome to Viswah API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+    """API root endpoint"""
+    return SuccessResponse(
+        message="Welcome to Viswah API - v1.0.0"
+    )
 
 
-@app.get("/api/health")
+@app.get(
+    "/api/health",
+    response_model=SuccessResponse,
+    tags=["System"]
+)
 def health():
-    return {"status": "healthy", "app": "Viswah"}
+    """Health check endpoint"""
+    return SuccessResponse(message="healthy")
 
 
 if __name__ == "__main__":
