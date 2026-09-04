@@ -27,17 +27,27 @@ const LessonScreen = ({ route, navigation }) => {
 
   // Fix #12: Mark as complete
   const markComplete = async () => {
+    const token = await getAuthToken();
+    if (!token) {
+      Alert.alert('Login Required', 'Please login to save progress', [
+        { text: 'Login', onPress: () => navigation.navigate('Login') },
+        { text: 'Cancel' }
+      ]);
+      return;
+    }
+
     setCompleting(true);
     try {
-      await authFetch(api.progress, {
+      const res = await authFetch(api.progress, {
         method: 'POST',
         body: JSON.stringify({
-          lesson_id: parseInt(lessonId),
+          lesson_id: Number(lessonId),
           completed: true,
           score: 100,
           time_spent_minutes: lesson?.duration_minutes || 10
         }),
       });
+      if (!res.ok) throw new Error('Failed');
       Alert.alert('Done', 'Lesson completed!', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);

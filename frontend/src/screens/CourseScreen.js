@@ -35,10 +35,13 @@ const CourseScreen = ({ route, navigation }) => {
             authFetch(api.progress),
           ]);
           const enrolledCourses = await eRes.json();
-          setEnrolled(enrolledCourses.some(c => c.id === parseInt(courseId)));
+          setEnrolled(enrolledCourses.some(c => c.id === Number(courseId)));
 
           const prog = await pRes.json();
-          const completedIds = prog.filter(p => p.completed).map(p => p.lesson_id);
+          // Fix #3: Filter progress to only lessons in this course
+          const lessonIds = lessonsData.map(l => l.id);
+          const courseProg = prog.filter(p => lessonIds.includes(p.lesson_id));
+          const completedIds = courseProg.filter(p => p.completed).map(p => p.lesson_id);
           const completed = lessonsData.filter(l => completedIds.includes(l.id)).length;
           setProgress(lessonsData.length > 0 ? completed / lessonsData.length : 0);
         } catch {}

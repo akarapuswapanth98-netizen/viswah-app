@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from typing import Dict
 from dotenv import load_dotenv
@@ -35,7 +36,6 @@ def generate_lesson(topic: str, difficulty: str, instrument: str, lesson_type: s
                 temperature=0.7,
                 max_tokens=1500
             )
-            import json
             return json.loads(response.choices[0].message.content)
         except Exception as e:
             logger.error(f"OpenAI error: {e}")
@@ -78,7 +78,6 @@ def generate_practice_exercise(topic: str, skill_level: str) -> Dict:
                 temperature=0.7,
                 max_tokens=800
             )
-            import json
             return json.loads(response.choices[0].message.content)
         except Exception as e:
             logger.error(f"OpenAI error: {e}")

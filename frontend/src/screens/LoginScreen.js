@@ -16,6 +16,17 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
 
+    // Fix #6: Client-side validation
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    if (isRegister && username.length < 4) {
+      Alert.alert('Error', 'Username must be at least 4 characters');
+      return;
+    }
+
     setLoading(true);
     try {
       if (isRegister) {

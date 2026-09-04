@@ -34,12 +34,25 @@ const ProfileScreen = ({ navigation }) => {
         ? Math.round(progress.reduce((a, p) => a + p.score, 0) / progress.length)
         : 0;
 
-      // Calculate streak from recent activity
-      const recentDates = progress
+      // Fix #5: Calculate streak (consecutive days)
+      const dates = progress
         .filter(p => p.completed_at)
         .map(p => new Date(p.completed_at).toDateString());
-      const uniqueDates = [...new Set(recentDates)];
-      const streak = uniqueDates.length;
+      const uniqueDates = [...new Set(dates)].sort((a, b) => new Date(b) - new Date(a));
+
+      let streak = 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      for (let i = 0; i < uniqueDates.length; i++) {
+        const checkDate = new Date(today);
+        checkDate.setDate(checkDate.getDate() - i);
+        if (uniqueDates.includes(checkDate.toDateString())) {
+          streak++;
+        } else {
+          break;
+        }
+      }
 
       setStats({
         courses: enrolled.length,

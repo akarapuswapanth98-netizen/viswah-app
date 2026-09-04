@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Title, Paragraph, Button, Card, RadioButton, ProgressBar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { api, authFetch } from '../config/api';
+import { api, authFetch, getAuthToken } from '../config/api';
 
 const QuizScreen = ({ route, navigation }) => {
   const { lessonId } = route.params;
@@ -12,6 +12,7 @@ const QuizScreen = ({ route, navigation }) => {
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
+  const startTime = useRef(Date.now());
 
   useEffect(() => { fetchQuiz(); }, []);
 
@@ -46,19 +47,23 @@ const QuizScreen = ({ route, navigation }) => {
     setScore(finalScore);
     setShowResults(true);
 
-    // Fix #13: Save score to server
-    try {
-      await authFetch(api.progress, {
-        method: 'POST',
-        body: JSON.stringify({
-          lesson_id: parseInt(lessonId),
-          completed: true,
-          score: finalScore,
-          time_spent_minutes: 5
-        }),
-      });
-    } catch (e) {
-      console.log('Could not save score');
+    // Fix #2, #11: Save score only if authenticated
+    const token = await getAuthToken();
+    if (token) {
+      try {
+        const timeSpent = Math.round((Date.now() - startTime.current) / 60000);
+        await authFetch(api.progress, {
+          method: 'POST',
+          body: JSON.stringify({
+            lesson_id: Number(lessonId),
+            completed: true,
+            score: finalScore,
+            time_spent_minutes: Math.max(1, timeSpent)
+          }),
+        });
+      } catch (e) {
+        console.log('Could not save score');
+      }
     }
   };
 

@@ -28,9 +28,9 @@ const HomeScreen = ({ navigation }) => {
       setCourses(data);
     } catch (error) {
       setCourses([
-        { id: 1, title: 'Music Fundamentals', description: 'Learn the basics', stage: 1, instrument: 'vocal', difficulty: 'beginner' },
-        { id: 2, title: 'Vocal Training', description: 'Develop your voice', stage: 1, instrument: 'vocal', difficulty: 'beginner' },
-        { id: 3, title: 'Piano Basics', description: 'Start piano', stage: 1, instrument: 'piano', difficulty: 'beginner' },
+        { id: 1, title: 'Music Fundamentals', description: 'Learn the basics', stage: 1, instrument: 'vocal', difficulty: 'beginner', image_url: null },
+        { id: 2, title: 'Vocal Training', description: 'Develop your voice', stage: 1, instrument: 'vocal', difficulty: 'beginner', image_url: null },
+        { id: 3, title: 'Piano Basics', description: 'Start piano', stage: 1, instrument: 'piano', difficulty: 'beginner', image_url: null },
       ]);
     } finally { setLoading(false); }
   };
