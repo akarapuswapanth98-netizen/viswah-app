@@ -82,7 +82,7 @@ class LessonResponse(BaseModel):
     audio_url: Optional[str] = None
     order: int
     lesson_type: LessonType
-    duration_minutes: int
+    duration_minutes: int = Field(..., ge=1)
 
     class Config:
         from_attributes = True
@@ -172,14 +172,14 @@ class ExerciseGenerateRequest(BaseModel):
 class ExerciseResponse(BaseModel):
     exercise_name: str
     instructions: List[str] = Field(..., min_items=1)
-    duration: str
-    success_criteria: str
+    duration: str = Field(..., min_length=1, pattern=r"^\d+\s*(min|minutes|hour|hours|sec|seconds)$")
+    success_criteria: str = Field(..., min_length=1)
 
 
 class TopicsResponse(BaseModel):
     instrument: InstrumentType
     difficulty: DifficultyLevel
-    topics: List[str]
+    topics: List[str] = Field(..., min_items=1)
 
 
 # ============ Error Schemas ============
