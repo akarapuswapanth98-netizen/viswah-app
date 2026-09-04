@@ -15,21 +15,22 @@ const ProfileScreen = ({ navigation }) => {
     try {
       const [uRes, pRes, eRes] = await Promise.all([
         authFetch(api.me).catch(() => null),
-        authFetch(api.progress).catch(() => ({ json: () => [] })),
-        authFetch(api.enrolled).catch(() => ({ json: () => [] })),
+        authFetch(api.progress).catch(() => null),
+        authFetch(api.enrolled).catch(() => null),
       ]);
 
       if (uRes && uRes.ok) {
         setUser(await uRes.json());
       } else {
         setUser({ username: 'Guest', email: 'Not logged in', level: 'beginner' });
+        clearAuthToken().catch(() => {});
       }
 
-      const progress = await pRes.json();
-      const enrolled = await eRes.json();
+      const progress = (pRes && pRes.ok) ? await pRes.json() : [];
+      const enrolled = (eRes && eRes.ok) ? await eRes.json() : [];
 
       // Fix #14: Calculate real stats
-      const completedLessons = progress.filter(p => p.completed).length;
+      const completedLessons = Array.isArray(progress) ? progress.filter(p => p.completed).length : 0;
 
       // Fix #5: Calculate streak (consecutive days)
       const dates = progress
@@ -52,9 +53,9 @@ const ProfileScreen = ({ navigation }) => {
       }
 
       setStats({
-        courses: enrolled.length,
+        courses: Array.isArray(enrolled) ? enrolled.length : 0,
         lessons: completedLessons,
-        quizzes: progress.filter(p => p.score > 0).length,
+        quizzes: Array.isArray(progress) ? progress.filter(p => p.score > 0).length : 0,
         streak: streak,
       });
     } catch (e) {

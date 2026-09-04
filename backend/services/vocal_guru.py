@@ -2,6 +2,7 @@
 
 import os
 import logging
+import tempfile
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
 
@@ -147,8 +148,6 @@ def generate_speech(text: str, guru_id: str = "classical") -> Optional[str]:
                 model="eleven_monolingual_v1"
             )
             # Save to temp file
-            import tempfile
-            import os
             temp_dir = tempfile.gettempdir()
             audio_path = os.path.join(temp_dir, f"guru_{guru_id}.mp3")
             with open(audio_path, "wb") as f:
@@ -161,8 +160,6 @@ def generate_speech(text: str, guru_id: str = "classical") -> Optional[str]:
     if GTTS_AVAILABLE:
         try:
             tts = gTTS(text=text, lang='en')
-            import tempfile
-            import os
             temp_dir = tempfile.gettempdir()
             audio_path = os.path.join(temp_dir, f"guru_{guru_id}.mp3")
             tts.save(audio_path)

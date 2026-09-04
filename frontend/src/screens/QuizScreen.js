@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api, authFetch, getAuthToken } from '../config/api';
 
 const QuizScreen = ({ route, navigation }) => {
-  const { lessonId } = route.params;
+  const { lessonId } = route.params || {};
   const [quiz, setQuiz] = useState(null);
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState({});

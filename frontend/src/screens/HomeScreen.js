@@ -24,8 +24,9 @@ const HomeScreen = ({ navigation }) => {
   const fetchCourses = async () => {
     try {
       const response = await authFetch(api.courses);
+      if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
-      setCourses(data);
+      setCourses(Array.isArray(data) ? data : []);
     } catch (error) {
       setCourses([
         { id: 1, title: 'Music Fundamentals', description: 'Learn the basics', stage: 1, instrument: 'vocal', difficulty: 'beginner', image_url: null },

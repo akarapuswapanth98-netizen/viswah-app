@@ -12,6 +12,7 @@ const CourseScreen = ({ route, navigation }) => {
   const [enrolled, setEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
+  const [completedIds, setCompletedIds] = useState([]);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -34,15 +35,17 @@ const CourseScreen = ({ route, navigation }) => {
             authFetch(api.enrolled),
             authFetch(api.progress),
           ]);
-          const enrolledCourses = await eRes.json();
-          setEnrolled(enrolledCourses.some(c => c.id === Number(courseId)));
+          const enrolledCourses = eRes.ok ? await eRes.json() : [];
+          const enrolledIds = Array.isArray(enrolledCourses) ? enrolledCourses.map(c => c.id) : [];
+          setEnrolled(enrolledIds.includes(Number(courseId)));
 
-          const prog = await pRes.json();
+          const prog = pRes.ok ? await pRes.json() : [];
           // Fix #3: Filter progress to only lessons in this course
           const lessonIds = lessonsData.map(l => l.id);
-          const courseProg = prog.filter(p => lessonIds.includes(p.lesson_id));
-          const completedIds = courseProg.filter(p => p.completed).map(p => p.lesson_id);
-          const completed = lessonsData.filter(l => completedIds.includes(l.id)).length;
+          const courseProg = Array.isArray(prog) ? prog.filter(p => lessonIds.includes(p.lesson_id)) : [];
+          const completedIdsList = courseProg.filter(p => p.completed).map(p => p.lesson_id);
+          setCompletedIds(completedIdsList);
+          const completed = lessonsData.filter(l => completedIdsList.includes(l.id)).length;
           setProgress(lessonsData.length > 0 ? completed / lessonsData.length : 0);
         } catch {}
       }
@@ -138,7 +141,11 @@ const CourseScreen = ({ route, navigation }) => {
 
       {enrolled && (
         <View style={styles.bottom}>
-          <Button mode="contained" icon="play" onPress={() => lessons[0] && navigation.navigate('Lesson', { lessonId: lessons[0].id, lessonTitle: lessons[0].title })} style={styles.btn}>Continue</Button>
+          <Button mode="contained" icon="play" onPress={() => {
+            // Find first incomplete lesson
+            const nextLesson = lessons.find(l => !completedIds.includes(l.id)) || lessons[0];
+            if (nextLesson) navigation.navigate('Lesson', { lessonId: nextLesson.id, lessonTitle: nextLesson.title });
+          }} style={styles.btn}>Continue</Button>
         </View>
       )}
     </View>

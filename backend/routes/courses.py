@@ -8,7 +8,7 @@ from models.models import Course, Lesson, Progress, UserCourse, User
 from models.schemas import (
     CourseResponse, LessonResponse, ProgressUpdate, ProgressPatch,
     ProgressResponse, EnrollmentResponse, EnrolledCourseResponse,
-    ErrorResponse, InstrumentType
+    InstrumentType
 )
 from routes.auth import get_current_user
 

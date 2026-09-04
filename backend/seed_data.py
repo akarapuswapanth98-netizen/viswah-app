@@ -71,11 +71,15 @@ def seed_database(db: Session):
     db.add_all(courses)
     db.commit()
 
+    # Refresh to get IDs
+    for course in courses:
+        db.refresh(course)
+
     # Add Lessons for Music Fundamentals
     lessons = [
         # Music Fundamentals Lessons
         Lesson(
-            course_id=1,
+            course_id=courses[0].id,
             title="Introduction to Notes",
             content="# Introduction to Notes\n\nMusic is made up of different sounds called notes...",
             order=1,
@@ -83,7 +87,7 @@ def seed_database(db: Session):
             duration_minutes=10
         ),
         Lesson(
-            course_id=1,
+            course_id=courses[0].id,
             title="Understanding Rhythm",
             content="# Understanding Rhythm\n\nRhythm is the pattern of sounds and silences...",
             order=2,
@@ -91,7 +95,7 @@ def seed_database(db: Session):
             duration_minutes=15
         ),
         Lesson(
-            course_id=1,
+            course_id=courses[0].id,
             title="Major Scales",
             content="# Major Scales\n\nA major scale is a sequence of 7 notes...",
             order=3,
@@ -99,7 +103,7 @@ def seed_database(db: Session):
             duration_minutes=20
         ),
         Lesson(
-            course_id=1,
+            course_id=courses[0].id,
             title="Knowledge Check",
             content="Quiz time!",
             order=4,
@@ -109,7 +113,7 @@ def seed_database(db: Session):
 
         # Vocal Training Lessons
         Lesson(
-            course_id=2,
+            course_id=courses[1].id,
             title="Breathing Techniques",
             content="# Breathing for Singing\n\nProper breathing is essential...",
             order=1,
@@ -117,9 +121,45 @@ def seed_database(db: Session):
             duration_minutes=12
         ),
         Lesson(
-            course_id=2,
+            course_id=courses[1].id,
             title="Pitch Matching",
             content="# Pitch Matching\n\nLearn to match your voice to notes...",
+            order=2,
+            lesson_type="practice",
+            duration_minutes=15
+        ),
+
+        # Piano Lessons
+        Lesson(
+            course_id=courses[3].id,
+            title="Keyboard Layout",
+            content="# Keyboard Layout\n\nThe piano keyboard has 88 keys...",
+            order=1,
+            lesson_type="theory",
+            duration_minutes=10
+        ),
+        Lesson(
+            course_id=courses[3].id,
+            title="Finger Positioning",
+            content="# Finger Positioning\n\nProper finger placement is crucial...",
+            order=2,
+            lesson_type="practice",
+            duration_minutes=15
+        ),
+
+        # Drum Lessons
+        Lesson(
+            course_id=courses[5].id,
+            title="Basic Drum Patterns",
+            content="# Basic Drum Patterns\n\nStart with simple 4/4 beats...",
+            order=1,
+            lesson_type="theory",
+            duration_minutes=10
+        ),
+        Lesson(
+            course_id=courses[5].id,
+            title="Coordination Exercise",
+            content="# Coordination Exercise\n\nPractice using both hands independently...",
             order=2,
             lesson_type="practice",
             duration_minutes=15

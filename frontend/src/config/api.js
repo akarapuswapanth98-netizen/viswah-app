@@ -49,10 +49,14 @@ export const clearAuthToken = async () => {
 // Fix #7: User headers take precedence
 export const authFetch = async (url, options = {}) => {
   const token = await getAuthToken();
+  const method = (options.method || 'GET').toUpperCase();
   const headers = {
     ...options.headers,
-    'Content-Type': 'application/json',
   };
+  // Only set Content-Type for requests with body
+  if (method !== 'GET' && method !== 'HEAD') {
+    headers['Content-Type'] = 'application/json';
+  }
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return fetch(url, { ...options, headers });
 };

@@ -36,11 +36,19 @@ def create_lesson(
         lesson_type=request.lesson_type.value
     )
 
+    # Handle missing keys from AI response
+    if not lesson or "title" not in lesson:
+        raise HTTPException(status_code=500, detail="AI failed to generate valid lesson")
+
+    tips = lesson.get("tips", [])
+    if not tips:
+        tips = ["Practice regularly", "Take breaks when needed"]
+
     return LessonGenerateResponse(
         title=lesson["title"],
-        content=lesson["content"],
-        quiz_questions=lesson["quiz_questions"],
-        tips=lesson.get("tips", [])
+        content=lesson.get("content", ""),
+        quiz_questions=lesson.get("quiz_questions", []),
+        tips=tips
     )
 
 

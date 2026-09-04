@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api, authFetch, getAuthToken } from '../config/api';
 
 const LessonScreen = ({ route, navigation }) => {
-  const { lessonId, lessonTitle } = route.params;
+  const { lessonId, lessonTitle } = route.params || {};
   const [lesson, setLesson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
@@ -15,7 +15,9 @@ const LessonScreen = ({ route, navigation }) => {
   const fetchLesson = async () => {
     try {
       const res = await authFetch(api.lesson(lessonId));
-      setLesson(await res.json());
+      if (!res.ok) throw new Error('Not found');
+      const data = await res.json();
+      setLesson(data);
     } catch (e) {
       setLesson({
         id: lessonId, title: lessonTitle || 'Lesson',

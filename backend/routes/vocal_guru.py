@@ -122,7 +122,18 @@ def speak_text(text: str, guru_id: str = "classical"):
 def get_audio(filename: str):
     """Serve audio files"""
     import tempfile
-    audio_path = os.path.join(tempfile.gettempdir(), filename)
+    # Fix #7: Prevent path traversal
+    safe_filename = os.path.basename(filename)
+    if safe_filename != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    temp_dir = tempfile.gettempdir()
+    audio_path = os.path.join(temp_dir, safe_filename)
+    
+    # Verify path is within temp directory
+    if not os.path.realpath(audio_path).startswith(os.path.realpath(temp_dir)):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    
     if not os.path.exists(audio_path):
         raise HTTPException(status_code=404, detail="Audio file not found")
     return FileResponse(audio_path, media_type="audio/mpeg")

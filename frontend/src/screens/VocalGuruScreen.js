@@ -52,6 +52,7 @@ const VocalGuruScreen = ({ navigation }) => {
     setTeaching(true);
     try {
       const res = await authFetch(api.vocalGuruTeach(topic, selectedGuru), { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to load lesson');
       const data = await res.json();
       setLesson(data);
     } catch (e) {
@@ -141,7 +142,7 @@ const VocalGuruScreen = ({ navigation }) => {
               ))}
 
               {lesson.audio_available && (
-                <Button mode="contained" icon="play" style={styles.playBtn}>
+                <Button mode="contained" icon="play" style={styles.playBtn} onPress={() => Alert.alert('Coming Soon', 'Audio playback will be available soon!')}>
                   Listen to Guru
                 </Button>
               )}

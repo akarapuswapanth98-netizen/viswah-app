@@ -20,5 +20,9 @@ email-validator
 # AI/ML (optional)
 openai
 
+# TTS (optional)
+gtts
+# elevenlabs  # Uncomment for premium TTS
+
 # Utilities
 pydantic
