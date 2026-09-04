@@ -20,6 +20,10 @@ export const api = {
   generateLesson: `${API_URL}/api/ai/generate-lesson`,
   generateExercise: `${API_URL}/api/ai/generate-exercise`,
   topics: (instrument, difficulty) => `${API_URL}/api/ai/topics/${instrument}/${difficulty}`,
+  vocalGurus: `${API_URL}/api/vocal-guru/gurus`,
+  vocalGuruTopics: `${API_URL}/api/vocal-guru/topics`,
+  vocalGuruGreet: (id) => `${API_URL}/api/vocal-guru/greet/${id}`,
+  vocalGuruTeach: (topic, guruId) => `${API_URL}/api/vocal-guru/teach/${topic}?guru_id=${guruId}`,
 };
 
 const TOKEN_KEY = '@viswah_token';

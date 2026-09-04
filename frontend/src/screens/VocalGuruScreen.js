@@ -17,8 +17,8 @@ const VocalGuruScreen = ({ navigation }) => {
   const fetchData = async () => {
     try {
       const [gRes, tRes] = await Promise.all([
-        authFetch(`${API_URL}/api/vocal-guru/gurus`),
-        authFetch(`${API_URL}/api/vocal-guru/topics`),
+        authFetch(api.vocalGurus),
+        authFetch(api.vocalGuruTopics),
       ]);
       setGurus(await gRes.json());
       setTopics(await tRes.json());
@@ -36,7 +36,7 @@ const VocalGuruScreen = ({ navigation }) => {
     setSelectedGuru(guruId);
     setTeaching(true);
     try {
-      const res = await authFetch(`${API_URL}/api/vocal-guru/greet/${guruId}`, { method: 'POST' });
+      const res = await authFetch(api.vocalGuruGreet(guruId), { method: 'POST' });
       const data = await res.json();
       Alert.alert(data.name, data.greeting);
     } catch (e) {
@@ -51,7 +51,7 @@ const VocalGuruScreen = ({ navigation }) => {
     }
     setTeaching(true);
     try {
-      const res = await authFetch(`${API_URL}/api/vocal-guru/teach/${topic}?guru_id=${selectedGuru}`, { method: 'POST' });
+      const res = await authFetch(api.vocalGuruTeach(topic, selectedGuru), { method: 'POST' });
       const data = await res.json();
       setLesson(data);
     } catch (e) {
@@ -152,8 +152,6 @@ const VocalGuruScreen = ({ navigation }) => {
     </View>
   );
 };
-
-const API_URL = 'http://localhost:8000';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F6F6F6' },

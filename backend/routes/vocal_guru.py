@@ -57,7 +57,7 @@ def list_topics():
     response_model=dict,
     responses={
         404: {"model": ErrorResponse, "description": "Topic not found"}
-    )
+    }
 )
 def get_lesson(topic: str):
     """Get lesson content for a topic"""

@@ -27,7 +27,7 @@ class Course(Base):
     stage = Column(Integer)
     instrument = Column(String(50))
     difficulty = Column(String(20))
-    image_url = Column(String(200))
+    image_url = Column(String(200), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     lessons = relationship("Lesson", back_populates="course")
@@ -75,3 +75,4 @@ class UserCourse(Base):
     enrolled_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="courses")
+    course = relationship("Course")

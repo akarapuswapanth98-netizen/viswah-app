@@ -5,13 +5,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from database import engine, Base
+from database import engine, Base, SessionLocal
 from models.schemas import SuccessResponse
 from routes import auth, courses, ai_routes, vocal_guru
+from seed_data import seed_database
 
 load_dotenv()
 
 Base.metadata.create_all(bind=engine)
+db = SessionLocal()
+seed_database(db)
+db.close()
 
 app = FastAPI(
     title="Viswah Music Learning API",
