@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Title, Paragraph, Button, Card, RadioButton, ProgressBar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api, authFetch } from '../config/api';
@@ -19,16 +19,13 @@ const QuizScreen = ({ route, navigation }) => {
     try {
       const res = await authFetch(api.lesson(lessonId));
       const data = await res.json();
-      if (data.quiz_questions && data.quiz_questions.length > 0) {
+      if (data.quiz_questions?.length > 0) {
         setQuiz({ questions: data.quiz_questions });
-      } else {
-        throw new Error('No quiz questions');
-      }
-    } catch (e) {
+      } else { throw new Error('No quiz'); }
+    } catch {
       setQuiz({ questions: [
         { question: "How many notes in the musical alphabet?", options: ["5","6","7","8"], correct_answer: "7" },
         { question: "What comes after G?", options: ["H","A","I","F"], correct_answer: "A" },
-        { question: "Which clef is for higher notes?", options: ["Bass","Treble","Alto","Tenor"], correct_answer: "Treble" },
       ]});
     } finally { setLoading(false); }
   };
@@ -42,11 +39,27 @@ const QuizScreen = ({ route, navigation }) => {
 
   const prev = () => { if (currentQ > 0) setCurrentQ(currentQ - 1); };
 
-  const calculateScore = () => {
+  const calculateScore = async () => {
     let correct = 0;
     quiz.questions.forEach((q, i) => { if (answers[i] === q.correct_answer) correct++; });
-    setScore(correct);
+    const finalScore = Math.round((correct / quiz.questions.length) * 100);
+    setScore(finalScore);
     setShowResults(true);
+
+    // Fix #13: Save score to server
+    try {
+      await authFetch(api.progress, {
+        method: 'POST',
+        body: JSON.stringify({
+          lesson_id: parseInt(lessonId),
+          completed: true,
+          score: finalScore,
+          time_spent_minutes: 5
+        }),
+      });
+    } catch (e) {
+      console.log('Could not save score');
+    }
   };
 
   const retry = () => { setCurrentQ(0); setAnswers({}); setShowResults(false); setScore(0); };
@@ -54,18 +67,17 @@ const QuizScreen = ({ route, navigation }) => {
   if (loading) return <View style={styles.loading}><Paragraph>Loading...</Paragraph></View>;
 
   if (showResults) {
-    const pct = (score / quiz.questions.length) * 100;
-    const pass = pct >= 70;
+    const pass = score >= 70;
     return (
       <View style={styles.container}>
         <View style={styles.results}>
           <Card style={styles.resultCard}>
             <Card.Content style={styles.resultContent}>
               <MaterialCommunityIcons name={pass ? "check-circle" : "alert-circle"} size={80} color={pass ? "#4CAF50" : "#F44336"} />
-              <Title style={styles.resultTitle}>{pass ? "Congratulations!" : "Keep Practicing!"}</Title>
-              <Paragraph style={styles.resultScore}>{score}/{quiz.questions.length} • {pct.toFixed(0)}%</Paragraph>
+              <Title style={styles.resultTitle}>{pass ? "Great job!" : "Keep trying!"}</Title>
+              <Paragraph style={styles.resultScore}>Score: {score}%</Paragraph>
               <View style={styles.resultBtns}>
-                <Button mode="outlined" onPress={retry} style={styles.retryBtn}>Try Again</Button>
+                <Button mode="outlined" onPress={retry} style={styles.retryBtn}>Retry</Button>
                 <Button mode="contained" onPress={() => navigation.navigate('Home')} style={styles.homeBtn}>Home</Button>
               </View>
             </Card.Content>
@@ -76,14 +88,13 @@ const QuizScreen = ({ route, navigation }) => {
   }
 
   const q = quiz.questions[currentQ];
-  const progress = (currentQ + 1) / quiz.questions.length;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Title style={styles.title}>Question {currentQ + 1}/{quiz.questions.length}</Title>
       </View>
-      <View style={styles.prog}><ProgressBar progress={progress} color="#6200EE" style={styles.bar} /></View>
+      <View style={styles.prog}><ProgressBar progress={(currentQ+1)/quiz.questions.length} color="#6200EE" style={styles.bar} /></View>
       <ScrollView style={styles.qContainer}>
         <Card style={styles.qCard}>
           <Card.Content>
@@ -98,7 +109,7 @@ const QuizScreen = ({ route, navigation }) => {
         </Card>
       </ScrollView>
       <View style={styles.bottom}>
-        <Button mode="outlined" onPress={prev} disabled={currentQ===0} style={styles.navBtn}>Previous</Button>
+        <Button mode="outlined" onPress={prev} disabled={currentQ===0} style={styles.navBtn}>Prev</Button>
         <Button mode="contained" onPress={next} disabled={!answers[currentQ]} style={styles.navBtn}>{currentQ===quiz.questions.length-1?'Finish':'Next'}</Button>
       </View>
     </View>

@@ -153,15 +153,15 @@ class LessonGenerateRequest(BaseModel):
 
 class QuizQuestion(BaseModel):
     question: str = Field(..., min_length=5, max_length=500)
-    options: List[str] = Field(..., min_items=2, max_items=6)  # Fix #10: min 2 options
+    options: List[str] = Field(..., min_length=2, max_length=6)
     correct_answer: str = Field(..., min_length=1)
 
 
 class LessonGenerateResponse(BaseModel):
     title: str
     content: str
-    quiz_questions: List[QuizQuestion] = Field(..., min_items=1)
-    tips: List[str] = Field(..., min_items=1)
+    quiz_questions: List[QuizQuestion] = Field(..., min_length=1)
+    tips: List[str] = Field(..., min_length=1)
 
 
 class ExerciseGenerateRequest(BaseModel):
@@ -171,15 +171,15 @@ class ExerciseGenerateRequest(BaseModel):
 
 class ExerciseResponse(BaseModel):
     exercise_name: str
-    instructions: List[str] = Field(..., min_items=1)
-    duration: str = Field(..., min_length=1, pattern=r"^\d+\s*(min|minutes|hour|hours|sec|seconds)$")
+    instructions: List[str] = Field(..., min_length=1)
+    duration: str = Field(..., min_length=1)
     success_criteria: str = Field(..., min_length=1)
 
 
 class TopicsResponse(BaseModel):
     instrument: InstrumentType
     difficulty: DifficultyLevel
-    topics: List[str] = Field(..., min_items=1)
+    topics: List[str] = Field(..., min_length=1)
 
 
 # ============ Error Schemas ============

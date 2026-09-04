@@ -15,16 +15,27 @@ const CourseScreen = ({ route, navigation }) => {
 
   const fetchData = async () => {
     try {
-      const [cRes, lRes, pRes] = await Promise.all([
+      const [cRes, lRes] = await Promise.all([
         authFetch(api.course(courseId)),
         authFetch(api.courseLessons(courseId)),
-        authFetch(api.progress).catch(() => ({ json: () => [] })),
       ]);
-      setCourse(await cRes.json());
-      setLessons(await lRes.json());
-      const prog = await pRes.json();
-      const completed = prog.filter(p => p.completed).length;
-      setProgress(lessons.length > 0 ? completed / lessons.length : 0);
+      const courseData = await cRes.json();
+      const lessonsData = await lRes.json();
+      setCourse(courseData);
+      setLessons(lessonsData);
+
+      // Fix #1: Calculate progress after lessons are fetched
+      if (lessonsData.length > 0) {
+        try {
+          const pRes = await authFetch(api.progress);
+          const prog = await pRes.json();
+          const completedIds = prog.filter(p => p.completed).map(p => p.lesson_id);
+          const completed = lessonsData.filter(l => completedIds.includes(l.id)).length;
+          setProgress(completed / lessonsData.length);
+        } catch {
+          setProgress(0);
+        }
+      }
     } catch (e) {
       setCourse({ id: courseId, title: 'Course', description: 'Loading...', stage: 1, difficulty: 'beginner' });
       setLessons([{ id: 1, title: 'Lesson 1', order: 1, lesson_type: 'theory', duration_minutes: 10 }]);

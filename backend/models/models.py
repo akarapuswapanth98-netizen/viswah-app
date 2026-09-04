@@ -1,6 +1,4 @@
-# Database Models
-
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime, timezone
@@ -69,6 +67,7 @@ class Progress(Base):
 
 class UserCourse(Base):
     __tablename__ = "user_courses"
+    __table_args__ = (UniqueConstraint('user_id', 'course_id', name='uq_user_course'),)
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))

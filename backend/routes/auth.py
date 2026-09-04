@@ -18,17 +18,16 @@ from models.schemas import (
 
 load_dotenv()
 
-router = APIRouter(
-    prefix="/api/auth",
-    tags=["Authentication"]
-)
+router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
-# Security
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-# JWT Settings - from environment
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fallback-dev-key-change-me")
+# Fix #4: Require env var, no fallback
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY environment variable is required")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -45,8 +44,7 @@ def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def get_current_user(
@@ -76,30 +74,18 @@ def get_current_user(
     "/register",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
-    responses={
-        409: {"model": ErrorResponse, "description": "Email already registered"}
-    }
+    responses={409: {"model": ErrorResponse, "description": "Email already registered"}}
 )
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if db_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered"
-        )
+    if db.query(User).filter(User.email == user.email).first():
+        raise HTTPException(status_code=409, detail="Email already registered")
+    if db.query(User).filter(User.username == user.username).first():
+        raise HTTPException(status_code=409, detail="Username already taken")
 
-    db_username = db.query(User).filter(User.username == user.username).first()
-    if db_username:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username already taken"
-        )
-
-    hashed_password = get_password_hash(user.password)
     new_user = User(
         username=user.username,
         email=user.email,
-        hashed_password=hashed_password
+        hashed_password=get_password_hash(user.password)
     )
     db.add(new_user)
     db.commit()
@@ -110,21 +96,17 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 @router.post(
     "/login",
     response_model=TokenResponse,
-    responses={
-        401: {"model": ErrorResponse, "description": "Incorrect email or password"}
-    }
+    responses={401: {"model": ErrorResponse, "description": "Incorrect email or password"}}
 )
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == request.email).first()
     if not user or not verify_password(request.password, user.hashed_password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=401,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    access_token = create_access_token(data={"sub": user.email})
-    return TokenResponse(access_token=access_token)
+    return TokenResponse(access_token=create_access_token(data={"sub": user.email}))
 
 
 @router.get(

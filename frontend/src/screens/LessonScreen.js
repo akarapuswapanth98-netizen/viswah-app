@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Title, Paragraph, Button, Card, Divider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api, authFetch } from '../config/api';
@@ -8,6 +8,7 @@ const LessonScreen = ({ route, navigation }) => {
   const { lessonId, lessonTitle } = route.params;
   const [lesson, setLesson] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => { fetchLesson(); }, []);
 
@@ -18,10 +19,31 @@ const LessonScreen = ({ route, navigation }) => {
     } catch (e) {
       setLesson({
         id: lessonId, title: lessonTitle || 'Lesson',
-        content: '# Introduction to Music\n\nMusic is made up of notes.\n\n## The Musical Alphabet\n\nA, B, C, D, E, F, G\n\n## Practice\n\n1. Say the notes out loud\n2. Find them on an instrument\n3. Listen to each note',
+        content: '# Introduction to Music\n\nMusic is made up of notes.\n\n## The Musical Alphabet\n\nA, B, C, D, E, F, G',
         duration_minutes: 10
       });
     } finally { setLoading(false); }
+  };
+
+  // Fix #12: Mark as complete
+  const markComplete = async () => {
+    setCompleting(true);
+    try {
+      await authFetch(api.progress, {
+        method: 'POST',
+        body: JSON.stringify({
+          lesson_id: parseInt(lessonId),
+          completed: true,
+          score: 100,
+          time_spent_minutes: lesson?.duration_minutes || 10
+        }),
+      });
+      Alert.alert('Done', 'Lesson completed!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (e) {
+      Alert.alert('Error', 'Could not save progress');
+    } finally { setCompleting(false); }
   };
 
   if (loading) return <View style={styles.loading}><Paragraph>Loading...</Paragraph></View>;
@@ -50,24 +72,12 @@ const LessonScreen = ({ route, navigation }) => {
             })}
           </Card.Content>
         </Card>
-
-        <Card style={styles.tips}>
-          <Card.Content>
-            <View style={styles.tipsHeader}>
-              <MaterialCommunityIcons name="lightbulb-outline" size={24} color="#FFC107" />
-              <Title style={styles.tipsTitle}>Practice Tips</Title>
-            </View>
-            <Divider style={{marginVertical:12}} />
-            <Paragraph style={styles.tip}>• Practice 15-20 minutes daily</Paragraph>
-            <Paragraph style={styles.tip}>• Use a metronome</Paragraph>
-            <Paragraph style={styles.tip}>• Record yourself</Paragraph>
-          </Card.Content>
-        </Card>
       </ScrollView>
 
       <View style={styles.bottom}>
         <Button mode="outlined" onPress={() => navigation.goBack()} style={styles.backBtn}>Back</Button>
-        <Button mode="contained" icon="arrow-right" onPress={() => navigation.navigate('Quiz', { lessonId })} style={styles.nextBtn}>Quiz</Button>
+        <Button mode="contained" onPress={markComplete} loading={completing} style={styles.completeBtn}>Mark Complete</Button>
+        <Button mode="contained" onPress={() => navigation.navigate('Quiz', { lessonId })} style={styles.quizBtn}>Quiz</Button>
       </View>
     </View>
   );
@@ -87,13 +97,10 @@ const styles = StyleSheet.create({
   p: { lineHeight: 24, marginBottom: 4 },
   bold: { fontWeight: 'bold', marginTop: 8, marginBottom: 4 },
   list: { marginLeft: 16, marginBottom: 4 },
-  tips: { marginBottom: 16, elevation: 2, backgroundColor: '#FFF8E1' },
-  tipsHeader: { flexDirection: 'row', alignItems: 'center' },
-  tipsTitle: { marginLeft: 8, fontSize: 16 },
-  tip: { marginBottom: 8, color: '#666' },
   bottom: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, backgroundColor: 'white', elevation: 8 },
-  backBtn: { flex: 1, marginRight: 8 },
-  nextBtn: { flex: 1, marginLeft: 8 },
+  backBtn: { flex: 1, marginRight: 4 },
+  completeBtn: { flex: 1, marginHorizontal: 4 },
+  quizBtn: { flex: 1, marginLeft: 4 },
 });
 
 export default LessonScreen;

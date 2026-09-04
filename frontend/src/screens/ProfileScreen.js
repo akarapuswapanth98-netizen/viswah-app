@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Title, Paragraph, Card, Button, Avatar, Divider } from 'react-native-paper';
+import { Title, Paragraph, Card, Button, Avatar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api, authFetch, clearAuthToken } from '../config/api';
 
@@ -14,26 +14,46 @@ const ProfileScreen = ({ navigation }) => {
   const fetchProfile = async () => {
     try {
       const [uRes, pRes, eRes] = await Promise.all([
-        authFetch(api.me),
+        authFetch(api.me).catch(() => null),
         authFetch(api.progress).catch(() => ({ json: () => [] })),
         authFetch(api.enrolled).catch(() => ({ json: () => [] })),
       ]);
-      setUser(await uRes.json());
+
+      if (uRes && uRes.ok) {
+        setUser(await uRes.json());
+      } else {
+        setUser({ username: 'Guest', email: 'Not logged in', level: 'beginner' });
+      }
+
       const progress = await pRes.json();
       const enrolled = await eRes.json();
+
+      // Fix #14: Calculate real stats
+      const completedLessons = progress.filter(p => p.completed).length;
+      const avgScore = progress.length > 0
+        ? Math.round(progress.reduce((a, p) => a + p.score, 0) / progress.length)
+        : 0;
+
+      // Calculate streak from recent activity
+      const recentDates = progress
+        .filter(p => p.completed_at)
+        .map(p => new Date(p.completed_at).toDateString());
+      const uniqueDates = [...new Set(recentDates)];
+      const streak = uniqueDates.length;
+
       setStats({
         courses: enrolled.length,
-        lessons: progress.filter(p => p.completed).length,
+        lessons: completedLessons,
         quizzes: progress.filter(p => p.score > 0).length,
-        streak: 5,
+        streak: streak,
       });
     } catch (e) {
-      setUser({ username: 'Guest', email: 'login required', level: 'beginner' });
+      setUser({ username: 'Guest', email: 'Not logged in', level: 'beginner' });
     } finally { setLoading(false); }
   };
 
-  const handleLogout = () => {
-    clearAuthToken();
+  const handleLogout = async () => {
+    await clearAuthToken();
     navigation.navigate('Home');
   };
 
@@ -71,10 +91,11 @@ const ProfileScreen = ({ navigation }) => {
           </Card.Content></Card>
         </View>
 
-        <Title style={styles.sectionTitle}>Settings</Title>
+        <Title style={styles.sectionTitle}>Account</Title>
         <Card style={styles.settings}>
           <Card.Content>
-            <Button mode="text" icon="logout" onPress={handleLogout} style={styles.settingsBtn}>Logout</Button>
+            <Button mode="text" icon="login" onPress={() => navigation.navigate('Login')} style={styles.btn}>Login / Register</Button>
+            <Button mode="text" icon="logout" onPress={handleLogout} style={styles.btn}>Logout</Button>
           </Card.Content>
         </Card>
       </ScrollView>
@@ -98,7 +119,7 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 28, marginTop: 8 },
   statLabel: { color: '#666', fontSize: 12 },
   settings: { elevation: 2, marginBottom: 32 },
-  settingsBtn: { justifyContent: 'flex-start', paddingVertical: 8 },
+  btn: { justifyContent: 'flex-start', paddingVertical: 8 },
 });
 
 export default ProfileScreen;

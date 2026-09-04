@@ -8,12 +8,13 @@ import CourseScreen from './src/screens/CourseScreen';
 import LessonScreen from './src/screens/LessonScreen';
 import QuizScreen from './src/screens/QuizScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import LoginScreen from './src/screens/LoginScreen';
 
 const Stack = createStackNavigator();
 
 const theme = {
   ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, primary: '#6200EE', accent: '#03DAC6', background: '#F6F6F6' },
+  colors: { ...DefaultTheme.colors, primary: '#6200EE', accent: '#03DAC6' },
 };
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Home">
           <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Viswah' }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
           <Stack.Screen name="Course" component={CourseScreen} options={{ title: 'Course' }} />
           <Stack.Screen name="Lesson" component={LessonScreen} options={{ title: 'Lesson' }} />
           <Stack.Screen name="Quiz" component={QuizScreen} options={{ title: 'Quiz' }} />
