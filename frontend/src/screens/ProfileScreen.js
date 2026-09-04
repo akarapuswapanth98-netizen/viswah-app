@@ -30,9 +30,6 @@ const ProfileScreen = ({ navigation }) => {
 
       // Fix #14: Calculate real stats
       const completedLessons = progress.filter(p => p.completed).length;
-      const avgScore = progress.length > 0
-        ? Math.round(progress.reduce((a, p) => a + p.score, 0) / progress.length)
-        : 0;
 
       // Fix #5: Calculate streak (consecutive days)
       const dates = progress

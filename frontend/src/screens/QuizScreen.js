@@ -12,9 +12,12 @@ const QuizScreen = ({ route, navigation }) => {
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
-  const startTime = useRef(Date.now());
+  const startTime = useRef(null);
 
-  useEffect(() => { fetchQuiz(); }, []);
+  useEffect(() => { 
+    startTime.current = Date.now();
+    fetchQuiz(); 
+  }, []);
 
   const fetchQuiz = async () => {
     try {
