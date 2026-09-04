@@ -1,14 +1,16 @@
-# Viswah Backend - FastAPI Main - Fixed
+# Viswah Backend - FastAPI Main
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
 from database import engine, Base
 from models.schemas import SuccessResponse
-
-# Import routes
 from routes import auth, courses, ai_routes
 
-# Create database tables
+load_dotenv()
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -17,40 +19,28 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS
+# Fix #4: Secure CORS from environment
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 
-# Include routes
 app.include_router(auth.router)
 app.include_router(courses.router)
 app.include_router(ai_routes.router)
 
 
-@app.get(
-    "/",
-    response_model=SuccessResponse,
-    tags=["System"]
-)
+@app.get("/", response_model=SuccessResponse, tags=["System"])
 def root():
-    """API root endpoint"""
-    return SuccessResponse(
-        message="Welcome to Viswah API - v1.0.0"
-    )
+    return SuccessResponse(message="Welcome to Viswah API - v1.0.0")
 
 
-@app.get(
-    "/api/health",
-    response_model=SuccessResponse,
-    tags=["System"]
-)
+@app.get("/api/health", response_model=SuccessResponse, tags=["System"])
 def health():
-    """Health check endpoint"""
     return SuccessResponse(message="healthy")
 
 

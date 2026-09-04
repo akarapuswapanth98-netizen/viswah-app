@@ -1,11 +1,13 @@
-# Authentication Routes - Fixed
+# Authentication Routes
 
+import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi.security import OAuth2PasswordBearer
+from dotenv import load_dotenv
 
 from database import get_db
 from models.models import User
@@ -14,6 +16,8 @@ from models.schemas import (
     TokenResponse, ErrorResponse
 )
 
+load_dotenv()
+
 router = APIRouter(
     prefix="/api/auth",
     tags=["Authentication"]
@@ -21,12 +25,10 @@ router = APIRouter(
 
 # Security
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# Fix #2: Correct tokenUrl
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-# JWT Settings
-SECRET_KEY = "your-secret-key-keep-it-secret"
+# JWT Settings - from environment
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fallback-dev-key-change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -41,7 +43,7 @@ def get_password_hash(password):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -70,7 +72,6 @@ def get_current_user(
     return user
 
 
-# Fix #6: Return 201 for registration
 @router.post(
     "/register",
     response_model=UserResponse,
@@ -80,7 +81,6 @@ def get_current_user(
     }
 )
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    # Check if user exists
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(
@@ -88,7 +88,6 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
 
-    # Check if username exists
     db_username = db.query(User).filter(User.username == user.username).first()
     if db_username:
         raise HTTPException(
@@ -96,7 +95,6 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
             detail="Username already taken"
         )
 
-    # Create new user
     hashed_password = get_password_hash(user.password)
     new_user = User(
         username=user.username,
@@ -109,7 +107,6 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-# Fix #1: Login with request body instead of query params
 @router.post(
     "/login",
     response_model=TokenResponse,
