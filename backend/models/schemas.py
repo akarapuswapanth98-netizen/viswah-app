@@ -112,14 +112,14 @@ class ProgressResponse(BaseModel):
 class ProgressUpdate(BaseModel):
     lesson_id: int
     completed: bool = False
-    score: float = Field(default=0.0, ge=0.0, le=100.0)
+    score: float = Field(default=0.0, ge=0, le=100)
     time_spent_minutes: int = Field(default=0, ge=0)
 
 
 class ProgressPatch(BaseModel):
     """Partial update for progress"""
     completed: Optional[bool] = None
-    score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    score: Optional[float] = Field(default=None, ge=0, le=100)
     time_spent_minutes: Optional[int] = Field(default=None, ge=0)
 
 
