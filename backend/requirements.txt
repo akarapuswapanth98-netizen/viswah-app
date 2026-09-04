@@ -17,9 +17,8 @@ python-dotenv
 # Email validation
 email-validator
 
-# AI/ML (optional - install if using OpenAI)
+# AI/ML (optional)
 openai
 
-# API & Utilities
-httpx
+# Utilities
 pydantic

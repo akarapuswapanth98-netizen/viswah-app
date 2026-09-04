@@ -172,7 +172,7 @@ class ExerciseGenerateRequest(BaseModel):
 class ExerciseResponse(BaseModel):
     exercise_name: str
     instructions: List[str] = Field(..., min_length=1)
-    duration: str = Field(..., min_length=1)
+    duration: str = Field(..., min_length=1, pattern=r"^\d+\s*(min|minutes|hour|hours|sec|seconds)$")
     success_criteria: str = Field(..., min_length=1)
 
 

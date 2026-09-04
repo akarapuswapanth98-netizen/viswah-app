@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Card, Title, Paragraph, Button, ProgressBar, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { api, authFetch } from '../config/api';
+import { api, authFetch, getAuthToken } from '../config/api';
 
 const CourseScreen = ({ route, navigation }) => {
   const { courseId } = route.params;
   const [course, setCourse] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [progress, setProgress] = useState(0);
+  const [enrolled, setEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -24,22 +26,52 @@ const CourseScreen = ({ route, navigation }) => {
       setCourse(courseData);
       setLessons(lessonsData);
 
-      // Fix #1: Calculate progress after lessons are fetched
-      if (lessonsData.length > 0) {
+      // Check enrollment and progress
+      const token = await getAuthToken();
+      if (token) {
         try {
-          const pRes = await authFetch(api.progress);
+          const [eRes, pRes] = await Promise.all([
+            authFetch(api.enrolled),
+            authFetch(api.progress),
+          ]);
+          const enrolledCourses = await eRes.json();
+          setEnrolled(enrolledCourses.some(c => c.id === parseInt(courseId)));
+
           const prog = await pRes.json();
           const completedIds = prog.filter(p => p.completed).map(p => p.lesson_id);
           const completed = lessonsData.filter(l => completedIds.includes(l.id)).length;
-          setProgress(completed / lessonsData.length);
-        } catch {
-          setProgress(0);
-        }
+          setProgress(lessonsData.length > 0 ? completed / lessonsData.length : 0);
+        } catch {}
       }
     } catch (e) {
       setCourse({ id: courseId, title: 'Course', description: 'Loading...', stage: 1, difficulty: 'beginner' });
       setLessons([{ id: 1, title: 'Lesson 1', order: 1, lesson_type: 'theory', duration_minutes: 10 }]);
     } finally { setLoading(false); }
+  };
+
+  const handleEnroll = async () => {
+    const token = await getAuthToken();
+    if (!token) {
+      Alert.alert('Login Required', 'Please login to enroll', [
+        { text: 'Login', onPress: () => navigation.navigate('Login') },
+        { text: 'Cancel' }
+      ]);
+      return;
+    }
+
+    setEnrolling(true);
+    try {
+      const res = await authFetch(api.enroll(courseId), { method: 'POST' });
+      if (res.ok) {
+        setEnrolled(true);
+        Alert.alert('Enrolled!', 'You can now start learning');
+      } else {
+        const err = await res.json();
+        Alert.alert('Error', err.detail || 'Could not enroll');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Could not enroll');
+    } finally { setEnrolling(false); }
   };
 
   const getIcon = (t) => t === 'theory' ? 'book-open-variant' : t === 'practice' ? 'music-note' : 'frequently-asked-questions';
@@ -58,16 +90,30 @@ const CourseScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      <View style={styles.progBox}>
-        <Paragraph>Progress</Paragraph>
-        <ProgressBar progress={progress} color="#6200EE" style={styles.bar} />
-        <Paragraph style={styles.progText}>{Math.round(progress*100)}% Complete</Paragraph>
-      </View>
+      {enrolled ? (
+        <View style={styles.progBox}>
+          <Paragraph>Progress</Paragraph>
+          <ProgressBar progress={progress} color="#6200EE" style={styles.bar} />
+          <Paragraph style={styles.progText}>{Math.round(progress*100)}% Complete</Paragraph>
+        </View>
+      ) : (
+        <View style={styles.enrollBox}>
+          <Button mode="contained" onPress={handleEnroll} loading={enrolling} icon="school" style={styles.enrollBtn}>
+            Enroll in this Course
+          </Button>
+        </View>
+      )}
 
       <ScrollView style={styles.list}>
         {lessons.map(l => (
-          <TouchableOpacity key={l.id} onPress={() => navigation.navigate('Lesson', { lessonId: l.id, lessonTitle: l.title })}>
-            <Card style={styles.card}>
+          <TouchableOpacity key={l.id} onPress={() => {
+            if (!enrolled) {
+              Alert.alert('Enroll First', 'Please enroll to access lessons');
+              return;
+            }
+            navigation.navigate('Lesson', { lessonId: l.id, lessonTitle: l.title });
+          }}>
+            <Card style={[styles.card, !enrolled && styles.cardLocked]}>
               <Card.Content>
                 <View style={styles.cardContent}>
                   <View style={styles.cardLeft}>
@@ -79,7 +125,7 @@ const CourseScreen = ({ route, navigation }) => {
                       <Paragraph style={styles.meta}>{l.lesson_type} • {l.duration_minutes} min</Paragraph>
                     </View>
                   </View>
-                  <MaterialCommunityIcons name="chevron-right" size={24} color="#999" />
+                  <MaterialCommunityIcons name={enrolled ? "chevron-right" : "lock"} size={24} color={enrolled ? "#999" : "#ccc"} />
                 </View>
               </Card.Content>
             </Card>
@@ -87,9 +133,11 @@ const CourseScreen = ({ route, navigation }) => {
         ))}
       </ScrollView>
 
-      <View style={styles.bottom}>
-        <Button mode="contained" icon="play" onPress={() => lessons[0] && navigation.navigate('Lesson', { lessonId: lessons[0].id, lessonTitle: lessons[0].title })} style={styles.btn}>Continue</Button>
-      </View>
+      {enrolled && (
+        <View style={styles.bottom}>
+          <Button mode="contained" icon="play" onPress={() => lessons[0] && navigation.navigate('Lesson', { lessonId: lessons[0].id, lessonTitle: lessons[0].title })} style={styles.btn}>Continue</Button>
+        </View>
+      )}
     </View>
   );
 };
@@ -105,8 +153,11 @@ const styles = StyleSheet.create({
   progBox: { padding: 16, backgroundColor: 'white', margin: 16, borderRadius: 8, elevation: 2 },
   bar: { marginTop: 8, height: 8, borderRadius: 4 },
   progText: { marginTop: 8, fontSize: 12, color: '#999', textAlign: 'right' },
+  enrollBox: { padding: 16, backgroundColor: 'white', margin: 16, borderRadius: 8, elevation: 2, alignItems: 'center' },
+  enrollBtn: { width: '100%' },
   list: { flex: 1, paddingHorizontal: 16 },
   card: { marginBottom: 12, elevation: 2 },
+  cardLocked: { opacity: 0.6 },
   cardContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   icon: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },

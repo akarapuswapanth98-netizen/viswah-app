@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Card, Title, Paragraph, Button, Chip, Searchbar } from 'react-native-paper';
+import { Card, Title, Paragraph, Button, Chip, Searchbar, Banner } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { api, authFetch } from '../config/api';
+import { api, authFetch, getAuthToken } from '../config/api';
 
 const HomeScreen = ({ navigation }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStage, setSelectedStage] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => { fetchCourses(); }, []);
+  useEffect(() => {
+    checkAuth();
+    fetchCourses();
+  }, []);
+
+  const checkAuth = async () => {
+    const token = await getAuthToken();
+    setIsLoggedIn(!!token);
+  };
 
   const fetchCourses = async () => {
     try {
@@ -18,7 +27,6 @@ const HomeScreen = ({ navigation }) => {
       const data = await response.json();
       setCourses(data);
     } catch (error) {
-      console.error('Error:', error);
       setCourses([
         { id: 1, title: 'Music Fundamentals', description: 'Learn the basics', stage: 1, instrument: 'vocal', difficulty: 'beginner' },
         { id: 2, title: 'Vocal Training', description: 'Develop your voice', stage: 1, instrument: 'vocal', difficulty: 'beginner' },
@@ -38,6 +46,18 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {/* Fix #13: Login prompt banner */}
+      {!isLoggedIn && (
+        <Banner
+          visible={!isLoggedIn}
+          actions={[{ label: 'Login', onPress: () => navigation.navigate('Login') }]}
+          icon="account-circle"
+          style={styles.banner}
+        >
+          Login to track progress and enroll in courses
+        </Banner>
+      )}
+
       <View style={styles.header}>
         <Title style={styles.headerTitle}>Welcome to Viswah</Title>
         <Paragraph style={styles.headerSub}>Start your music journey</Paragraph>
@@ -70,7 +90,9 @@ const HomeScreen = ({ navigation }) => {
       </ScrollView>
 
       <View style={styles.bottom}>
-        <Button mode="contained" icon="account" onPress={() => navigation.navigate('Profile')} style={styles.btn}>Profile</Button>
+        <Button mode="contained" icon="account" onPress={() => navigation.navigate(isLoggedIn ? 'Profile' : 'Login')} style={styles.btn}>
+          {isLoggedIn ? 'Profile' : 'Login'}
+        </Button>
       </View>
     </View>
   );
@@ -78,6 +100,7 @@ const HomeScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F6F6F6' },
+  banner: { backgroundColor: '#E8EAF6' },
   header: { padding: 20, backgroundColor: '#6200EE' },
   headerTitle: { color: 'white', fontSize: 24 },
   headerSub: { color: 'white', opacity: 0.8 },

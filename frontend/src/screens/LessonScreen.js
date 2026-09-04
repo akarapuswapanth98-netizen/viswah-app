@@ -64,11 +64,17 @@ const LessonScreen = ({ route, navigation }) => {
             {lesson?.content?.split('\n').map((line, i) => {
               if (line.startsWith('# ')) return <Title key={i} style={styles.h1}>{line.slice(2)}</Title>;
               if (line.startsWith('## ')) return <Title key={i} style={styles.h2}>{line.slice(3)}</Title>;
-              if (line.startsWith('**') && line.endsWith('**')) return <Paragraph key={i} style={styles.bold}>{line.slice(2, -2)}</Paragraph>;
               if (line.startsWith('- ')) return <View key={i} style={styles.list}><Paragraph>• {line.slice(2)}</Paragraph></View>;
               if (line.match(/^\d+\./)) return <View key={i} style={styles.list}><Paragraph>{line}</Paragraph></View>;
               if (line.trim() === '') return <View key={i} style={{height:12}} />;
-              return <Paragraph key={i} style={styles.p}>{line}</Paragraph>;
+              // Fix #14: Handle inline bold
+              const parts = line.split(/(\*\*[^*]+\*\*)/g);
+              return <Paragraph key={i} style={styles.p}>{parts.map((part, j) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  return <Paragraph key={j} style={styles.boldInline}>{part.slice(2, -2)}</Paragraph>;
+                }
+                return part;
+              })}</Paragraph>;
             })}
           </Card.Content>
         </Card>
@@ -96,6 +102,7 @@ const styles = StyleSheet.create({
   h2: { fontSize: 18, marginTop: 16, marginBottom: 8 },
   p: { lineHeight: 24, marginBottom: 4 },
   bold: { fontWeight: 'bold', marginTop: 8, marginBottom: 4 },
+  boldInline: { fontWeight: 'bold' },
   list: { marginLeft: 16, marginBottom: 4 },
   bottom: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, backgroundColor: 'white', elevation: 8 },
   backBtn: { flex: 1, marginRight: 4 },
