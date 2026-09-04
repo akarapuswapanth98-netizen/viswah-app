@@ -1,4 +1,4 @@
-# AI Lesson Routes - Fixed
+# AI Lesson Routes - Fixed with Auth
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.schemas import (
@@ -7,6 +7,8 @@ from models.schemas import (
     TopicsResponse, ErrorResponse
 )
 from services.ai_lesson_generator import generate_lesson, generate_practice_exercise
+from models.models import User
+from routes.auth import get_current_user
 
 router = APIRouter(
     prefix="/api/ai",
@@ -18,11 +20,15 @@ router = APIRouter(
     "/generate-lesson",
     response_model=LessonGenerateResponse,
     responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
         422: {"model": ErrorResponse, "description": "Validation error"}
     }
 )
-def create_lesson(request: LessonGenerateRequest):
-    """Generate a new music lesson using AI"""
+def create_lesson(
+    request: LessonGenerateRequest,
+    current_user: User = Depends(get_current_user)  # Fix #2: Add auth
+):
+    """Generate a new music lesson using AI (requires auth)"""
     lesson = generate_lesson(
         topic=request.topic,
         difficulty=request.difficulty.value,
@@ -42,11 +48,15 @@ def create_lesson(request: LessonGenerateRequest):
     "/generate-exercise",
     response_model=ExerciseResponse,
     responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
         422: {"model": ErrorResponse, "description": "Validation error"}
     }
 )
-def create_exercise(request: ExerciseGenerateRequest):
-    """Generate a practice exercise"""
+def create_exercise(
+    request: ExerciseGenerateRequest,
+    current_user: User = Depends(get_current_user)  # Fix #3: Add auth
+):
+    """Generate a practice exercise (requires auth)"""
     exercise = generate_practice_exercise(
         topic=request.topic,
         skill_level=request.skill_level.value
@@ -58,11 +68,16 @@ def create_exercise(request: ExerciseGenerateRequest):
     "/topics/{instrument}/{difficulty}",
     response_model=TopicsResponse,
     responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
         422: {"model": ErrorResponse, "description": "Invalid instrument or difficulty"}
     }
 )
-def get_topics(instrument: str, difficulty: str):
-    """Get available topics for a given instrument and difficulty"""
+def get_topics(
+    instrument: str,
+    difficulty: str,
+    current_user: User = Depends(get_current_user)  # Fix #3: Add auth
+):
+    """Get available topics for a given instrument and difficulty (requires auth)"""
 
     topics = {
         "vocal": {

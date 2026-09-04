@@ -1,12 +1,13 @@
-# Pydantic Schemas for API
+# Pydantic Schemas for API - Fixed
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
 
-# Enums
+# ============ Shared Enums ============
+
 class DifficultyLevel(str, Enum):
     beginner = "beginner"
     intermediate = "intermediate"
@@ -25,23 +26,20 @@ class LessonType(str, Enum):
     quiz = "quiz"
 
 
-class UserLevel(str, Enum):
-    beginner = "beginner"
-    intermediate = "intermediate"
-    advanced = "advanced"
+# Fix #4: Single shared level type (remove UserLevel, use DifficultyLevel everywhere)
 
 
 # ============ Auth Schemas ============
 
 class UserCreate(BaseModel):
-    username: str
+    username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=6, max_length=100)
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=6, max_length=100)
 
 
 class TokenResponse(BaseModel):
@@ -53,7 +51,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
-    level: UserLevel
+    level: DifficultyLevel  # Fix #4: Use shared enum
 
     class Config:
         from_attributes = True
@@ -68,7 +66,7 @@ class CourseResponse(BaseModel):
     stage: int
     instrument: InstrumentType
     difficulty: DifficultyLevel
-    image_url: Optional[str] = None
+    image_url: Optional[str] = None  # Fix #5: Simple nullable string
 
     class Config:
         from_attributes = True
@@ -114,8 +112,15 @@ class ProgressResponse(BaseModel):
 class ProgressUpdate(BaseModel):
     lesson_id: int
     completed: bool = False
-    score: float = 0.0
-    time_spent_minutes: int = 0
+    score: float = Field(default=0.0, ge=0.0, le=100.0)
+    time_spent_minutes: int = Field(default=0, ge=0)
+
+
+class ProgressPatch(BaseModel):
+    """Fix #11: Partial update for progress"""
+    completed: Optional[bool] = None
+    score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    time_spent_minutes: Optional[int] = Field(default=None, ge=0)
 
 
 # ============ Enrollment Schemas ============
@@ -140,16 +145,16 @@ class EnrolledCourseResponse(BaseModel):
 # ============ AI Schemas ============
 
 class LessonGenerateRequest(BaseModel):
-    topic: str
+    topic: str = Field(..., min_length=2, max_length=200)
     difficulty: DifficultyLevel
     instrument: InstrumentType
     lesson_type: LessonType
 
 
 class QuizQuestion(BaseModel):
-    question: str
-    options: List[str]
-    correct_answer: str
+    question: str = Field(..., min_length=5, max_length=500)
+    options: List[str] = Field(..., min_items=2, max_items=6)  # Fix #10: min 2 options
+    correct_answer: str = Field(..., min_length=1)
 
 
 class LessonGenerateResponse(BaseModel):
@@ -160,7 +165,7 @@ class LessonGenerateResponse(BaseModel):
 
 
 class ExerciseGenerateRequest(BaseModel):
-    topic: str
+    topic: str = Field(..., min_length=2, max_length=200)
     skill_level: DifficultyLevel
 
 

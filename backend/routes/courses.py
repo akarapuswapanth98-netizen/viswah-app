@@ -7,7 +7,7 @@ from typing import List
 from database import get_db
 from models.models import Course, Lesson, Progress, UserCourse, User
 from models.schemas import (
-    CourseResponse, LessonResponse, ProgressUpdate,
+    CourseResponse, LessonResponse, ProgressUpdate, ProgressPatch,
     ProgressResponse, EnrollmentResponse, EnrolledCourseResponse,
     ErrorResponse, SuccessResponse
 )
@@ -104,6 +104,7 @@ def get_lesson(lesson_id: int, db: Session = Depends(get_db)):
 @router.post(
     "/enroll/{course_id}",
     response_model=EnrollmentResponse,
+    status_code=status.HTTP_201_CREATED,  # Fix #6: Return 201
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         404: {"model": ErrorResponse, "description": "Course not found"},
@@ -163,7 +164,7 @@ def get_enrolled_courses(
     ).all()
     course_ids = [e.course_id for e in enrolled]
     courses = db.query(Course).filter(Course.id.in_(course_ids)).all()
-    return courses
+    return courses  # Fix #8: Returns empty array if no enrollments (not 404)
 
 
 # ============ Progress Endpoints ============
@@ -173,15 +174,16 @@ def get_enrolled_courses(
     response_model=ProgressResponse,
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
-        404: {"model": ErrorResponse, "description": "Lesson not found"}
+        404: {"model": ErrorResponse, "description": "Lesson not found"},
+        422: {"model": ErrorResponse, "description": "Validation error"}  # Fix #7
     }
 )
-def update_progress(
+def create_progress(
     progress: ProgressUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update lesson progress (requires auth)"""
+    """Create new lesson progress (requires auth)"""
     # Check lesson exists
     lesson = db.query(Lesson).filter(Lesson.id == progress.lesson_id).first()
     if not lesson:
@@ -190,31 +192,58 @@ def update_progress(
             detail="Lesson not found"
         )
 
-    # Check if progress exists
+    new_progress = Progress(
+        user_id=current_user.id,
+        lesson_id=progress.lesson_id,
+        completed=progress.completed,
+        score=progress.score,
+        time_spent_minutes=progress.time_spent_minutes
+    )
+    db.add(new_progress)
+    db.commit()
+    db.refresh(new_progress)
+    return new_progress
+
+
+@router.patch(
+    "/progress/{progress_id}",
+    response_model=ProgressResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        404: {"model": ErrorResponse, "description": "Progress not found"},
+        422: {"model": ErrorResponse, "description": "Validation error"}
+    }
+)
+def update_progress(
+    progress_id: int,
+    progress: ProgressPatch,  # Fix #11: PATCH for partial updates
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update existing progress (requires auth, PATCH for partial)"""
+    # Check progress exists and belongs to user
     existing = db.query(Progress).filter(
-        Progress.user_id == current_user.id,
-        Progress.lesson_id == progress.lesson_id
+        Progress.id == progress_id,
+        Progress.user_id == current_user.id
     ).first()
 
-    if existing:
-        existing.completed = progress.completed
-        existing.score = progress.score
-        existing.time_spent_minutes = progress.time_spent_minutes
-        db.commit()
-        db.refresh(existing)
-        return existing
-    else:
-        new_progress = Progress(
-            user_id=current_user.id,
-            lesson_id=progress.lesson_id,
-            completed=progress.completed,
-            score=progress.score,
-            time_spent_minutes=progress.time_spent_minutes
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Progress not found"
         )
-        db.add(new_progress)
-        db.commit()
-        db.refresh(new_progress)
-        return new_progress
+
+    # Update only provided fields
+    if progress.completed is not None:
+        existing.completed = progress.completed
+    if progress.score is not None:
+        existing.score = progress.score
+    if progress.time_spent_minutes is not None:
+        existing.time_spent_minutes = progress.time_spent_minutes
+
+    db.commit()
+    db.refresh(existing)
+    return existing
 
 
 @router.get(
