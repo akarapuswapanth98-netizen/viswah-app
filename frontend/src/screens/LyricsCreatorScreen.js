@@ -1,305 +1,320 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TextInput, TouchableOpacity, Animated } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  Share,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
-import { GradientButton, Tag, SectionHeader } from '../components/UIComponents';
+import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const STYLES = [
+  { id: 'pop', label: 'Pop', color: '#FF6B6B', icon: 'music-note' },
+  { id: 'rock', label: 'Rock', color: '#FF5722', icon: 'guitar' },
+  { id: 'classical', label: 'Classical', color: '#9C27B0', icon: 'piano' },
+  { id: 'rap', label: 'Rap', color: '#2196F3', icon: 'microphone' },
+  { id: 'romantic', label: 'Romantic', color: '#E91E63', icon: 'heart' },
+  { id: 'devotional', label: 'Devotional', color: '#FF9800', icon: 'church' },
+];
+
 const LyricsCreatorScreen = ({ navigation }) => {
-  const [genres, setGenres] = useState([]);
-  const [moods, setMoods] = useState([]);
-  const [selectedGenre, setSelectedGenre] = useState('pop');
-  const [selectedMood, setSelectedMood] = useState('happy');
   const [topic, setTopic] = useState('');
-  const [lyrics, setLyrics] = useState(null);
-  const [editedLyrics, setEditedLyrics] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState('pop');
+  const [lyrics, setLyrics] = useState('');
   const [analysis, setAnalysis] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [viewMode, setViewMode] = useState('edit');
-  
+  const [saveState, setSaveState] = useState('idle');
+  const [visibleLines, setVisibleLines] = useState(0);
+
+  const spinAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const lineAnims = useRef([]).current;
+  const saveScale = useRef(new Animated.Value(0)).current;
+  const cursorOpacity = useRef(new Animated.Value(1)).current;
+
+  const lyricsRef = useRef(null);
+  const textInputRef = useRef(null);
+
+  const lines = lyrics.split('\n');
+  const wordCount = lyrics.trim() ? lyrics.trim().split(/\s+/).length : 0;
 
   useEffect(() => {
-    fetchData();
-    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    cursorBlink();
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const [gRes, mRes] = await Promise.all([
-        authFetch(api.lyricsGenres),
-        authFetch(api.lyricsMoods),
-      ]);
-      if (gRes.ok) setGenres(await gRes.json());
-      if (mRes.ok) setMoods(await mRes.json());
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (lyrics) {
+      const lineCount = lyrics.split('\n').length;
+      lineAnims.length = 0;
+      for (let i = 0; i < lineCount; i++) {
+        lineAnims.push(new Animated.Value(0));
+      }
+      setVisibleLines(0);
+      animateLines(lineCount);
     }
+  }, [lyrics]);
+
+  const cursorBlink = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(cursorOpacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+        Animated.timing(cursorOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ])
+    ).start();
+  };
+
+  const animateLines = (count) => {
+    const animations = [];
+    for (let i = 0; i < count; i++) {
+      animations.push(
+        Animated.delay(i * 50),
+        Animated.timing(lineAnims[i], { toValue: 1, duration: 200, useNativeDriver: true })
+      );
+    }
+    Animated.sequence(animations).start(() => setVisibleLines(count));
+  };
+
+  const startSpinner = () => {
+    Animated.loop(
+      Animated.timing(spinAnim, { toValue: 1, duration: 1000, useNativeDriver: true })
+    ).start();
+  };
+
+  const stopSpinner = () => {
+    spinAnim.stopAnimation();
+    spinAnim.setValue(0);
   };
 
   const handleGenerate = async () => {
-    if (!topic.trim()) return;
-    
+    if (!topic.trim() || generating) return;
     setGenerating(true);
+    startSpinner();
     try {
       const res = await authFetch(api.lyricsGenerate, {
         method: 'POST',
-        body: JSON.stringify({ topic, genre: selectedGenre, mood: selectedMood }),
+        body: JSON.stringify({ topic, style: selectedStyle }),
       });
       if (res.ok) {
         const data = await res.json();
-        setLyrics(data);
-        const text = data.lyrics?.map(s => {
-          const lines = s.lines?.join('\n') || '';
-          return `[${s.section_name?.toUpperCase()}]\n${lines}`;
-        }).join('\n\n') || '';
-        setEditedLyrics(text);
+        const text = data.lyrics
+          ?.map((s) => {
+            const sectionLines = s.lines?.join('\n') || '';
+            return `[${s.section_name?.toUpperCase()}]\n${sectionLines}`;
+          })
+          .join('\n\n') || data.lyrics || data.text || '';
+        setLyrics(text);
+        setVisibleLines(0);
+        fadeAnim.setValue(0);
+        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       }
     } catch (e) {
-      console.error(e);
+      console.error('Generate error:', e);
     } finally {
+      stopSpinner();
       setGenerating(false);
     }
   };
 
-  const handleAnalyze = async () => {
-    if (!editedLyrics.trim()) return;
-    
+  const handleSave = async () => {
+    if (!lyrics.trim()) return;
+    setSaveState('saving');
     try {
-      const res = await authFetch(api.lyricsAnalyze, {
+      await authFetch(api.lyricsAnalyze, {
         method: 'POST',
-        body: JSON.stringify({ lyrics: editedLyrics }),
+        body: JSON.stringify({ lyrics, topic, style: selectedStyle }),
       });
-      if (res.ok) setAnalysis(await res.json());
     } catch (e) {
-      console.error(e);
+      console.error('Save error:', e);
+    } finally {
+      setSaveState('saved');
+      Animated.spring(saveScale, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }).start(() => {
+        setTimeout(() => {
+          Animated.spring(saveScale, { toValue: 0, friction: 4, useNativeDriver: true }).start(() => {
+            setSaveState('idle');
+          });
+        }, 1500);
+      });
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <MaterialCommunityIcons name="loading" size={40} color={COLORS.primary} />
-      </View>
-    );
-  }
+  const handleShare = async () => {
+    if (!lyrics.trim()) return;
+    try {
+      await Share.share({ message: lyrics, title: `Lyrics about ${topic}` });
+    } catch (e) {
+      console.error('Share error:', e);
+    }
+  };
+
+  const handleNewLyrics = () => {
+    setLyrics('');
+    setTopic('');
+    setAnalysis(null);
+    setVisibleLines(0);
+    fadeAnim.setValue(0);
+  };
+
+  const spinInterpolate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  const lineNumbers = lines.map((_, i) => i + 1);
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        {...createGradient(['#9C27B0', '#E91E63'])}
-        style={styles.header}
-      >
+      <LinearGradient {...createGradient(['#9C27B0', '#E91E63'])} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
           </TouchableOpacity>
-          <View style={styles.headerInfo}>
-            <Animated.Text style={styles.headerTitle}>Lyrics Creator</Animated.Text>
-            <Animated.Text style={styles.headerSubtitle}>AI-powered songwriting assistant</Animated.Text>
-          </View>
+          <Text style={styles.headerTitle}>Lyrics Creator</Text>
+          <TouchableOpacity style={styles.saveHeaderButton} onPress={handleSave}>
+            <MaterialCommunityIcons name="content-save" size={22} color={COLORS.white} />
+          </TouchableOpacity>
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Input Section */}
-        {!lyrics && (
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {!lyrics ? (
           <Animated.View style={[styles.inputSection, { opacity: fadeAnim }]}>
-            {/* Topic Input */}
             <View style={styles.inputCard}>
-              <Animated.Text style={styles.inputLabel}>What's your song about?</Animated.Text>
-              <TextInput
-                style={styles.topicInput}
-                placeholder="e.g., love, summer, freedom..."
-                placeholderTextColor={COLORS.gray400}
-                value={topic}
-                onChangeText={setTopic}
-                multiline
-              />
+              <View style={styles.inputRow}>
+                <MaterialCommunityIcons name="pen" size={18} color={COLORS.primary} />
+                <TextInput
+                  ref={textInputRef}
+                  style={styles.topicInput}
+                  placeholder="What should the lyrics be about?"
+                  placeholderTextColor={COLORS.gray400}
+                  value={topic}
+                  onChangeText={setTopic}
+                  multiline
+                />
+              </View>
             </View>
 
-            {/* Genre Selection */}
-            <View style={styles.selectionCard}>
-              <Animated.Text style={styles.selectionLabel}>Genre</Animated.Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {genres.map((genre) => (
-                  <TouchableOpacity
-                    key={genre.id}
-                    style={[styles.chip, selectedGenre === genre.id && styles.chipSelected]}
-                    onPress={() => setSelectedGenre(genre.id)}
-                  >
-                    <Animated.Text style={[styles.chipText, selectedGenre === genre.id && styles.chipTextSelected]}>
-                      {genre.name}
-                    </Animated.Text>
-                  </TouchableOpacity>
-                ))}
+            <View style={styles.styleSection}>
+              <Text style={styles.sectionLabel}>Style</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
+                {STYLES.map((style) => {
+                  const isSelected = selectedStyle === style.id;
+                  return (
+                    <TouchableOpacity
+                      key={style.id}
+                      style={[styles.chip, isSelected && { backgroundColor: style.color }]}
+                      onPress={() => setSelectedStyle(style.id)}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name={style.icon}
+                        size={16}
+                        color={isSelected ? COLORS.white : style.color}
+                        style={styles.chipIcon}
+                      />
+                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                        {style.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             </View>
 
-            {/* Mood Selection */}
-            <View style={styles.selectionCard}>
-              <Animated.Text style={styles.selectionLabel}>Mood</Animated.Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {moods.map((mood) => (
-                  <TouchableOpacity
-                    key={mood.id}
-                    style={[styles.chip, selectedMood === mood.id && styles.chipSelected]}
-                    onPress={() => setSelectedMood(mood.id)}
-                  >
-                    <Animated.Text style={styles.chipEmoji}>{mood.emoji}</Animated.Text>
-                    <Animated.Text style={[styles.chipText, selectedMood === mood.id && styles.chipTextSelected]}>
-                      {mood.name}
-                    </Animated.Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Generate Button */}
-            <GradientButton
-              title="Generate Lyrics"
+            <TouchableOpacity
+              style={[styles.generateButton, (!topic.trim() || generating) && styles.generateButtonDisabled]}
               onPress={handleGenerate}
-              loading={generating}
-              disabled={!topic.trim()}
-              icon="creation"
-              colors={['#9C27B0', '#E91E63']}
-              style={styles.generateButton}
-            />
+              disabled={!topic.trim() || generating}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                {...createGradient(['#9C63FF', '#E91E63'])}
+                style={styles.generateButtonGradient}
+              >
+                {generating ? (
+                  <Animated.View style={{ transform: [{ rotate: spinInterpolate }] }}>
+                    <MaterialCommunityIcons name="loading" size={22} color={COLORS.white} />
+                  </Animated.View>
+                ) : (
+                  <MaterialCommunityIcons name="creation" size={22} color={COLORS.white} />
+                )}
+                <Text style={styles.generateButtonText}>
+                  {generating ? 'Generating...' : 'Generate Lyrics'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </Animated.View>
-        )}
-
-        {/* Lyrics Editor */}
-        {lyrics && (
+        ) : (
           <Animated.View style={[styles.editorSection, { opacity: fadeAnim }]}>
-            {/* Title & Meta */}
-            <View style={styles.titleCard}>
-              <Animated.Text style={styles.lyricsTitle}>{lyrics.title || 'Untitled'}</Animated.Text>
-              <View style={styles.metaRow}>
-                <Tag label={lyrics.genre} color={COLORS.primary} />
-                <Tag label={lyrics.mood} color={COLORS.secondary} />
-                {lyrics.suggested_tempo && <Tag label={`${lyrics.suggested_tempo} BPM`} />}
-                {lyrics.suggested_key && <Tag label={lyrics.suggested_key} variant="light" />}
+            <View style={styles.editorHeader}>
+              <View style={styles.editorTitleRow}>
+                <MaterialCommunityIcons name="music-note" size={20} color={COLORS.primary} />
+                <Text style={styles.editorTitle}>{topic || 'Untitled Lyrics'}</Text>
               </View>
+              <Tag label={STYLES.find(s => s.id === selectedStyle)?.label} color={STYLES.find(s => s.id === selectedStyle)?.color} />
             </View>
 
-            {/* View Mode Tabs */}
-            <View style={styles.viewTabs}>
-              {['edit', 'preview', 'analysis'].map((mode) => (
-                <TouchableOpacity
-                  key={mode}
-                  style={[styles.viewTab, viewMode === mode && styles.viewTabSelected]}
-                  onPress={() => {
-                    setViewMode(mode);
-                    if (mode === 'analysis') handleAnalyze();
-                  }}
-                >
-                  <MaterialCommunityIcons 
-                    name={mode === 'edit' ? 'pencil' : mode === 'preview' ? 'eye' : 'chart-bar'} 
-                    size={16} 
-                    color={viewMode === mode ? COLORS.white : COLORS.gray500} 
-                  />
-                  <Animated.Text style={[styles.viewTabText, viewMode === mode && styles.viewTabTextSelected]}>
-                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                  </Animated.Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Edit Mode */}
-            {viewMode === 'edit' && (
-              <TextInput
-                style={styles.lyricsEditor}
-                value={editedLyrics}
-                onChangeText={setEditedLyrics}
-                multiline
-                textAlignVertical="top"
-                placeholder="Edit your lyrics here..."
-                placeholderTextColor={COLORS.gray400}
-              />
-            )}
-
-            {/* Preview Mode */}
-            {viewMode === 'preview' && (
-              <View style={styles.previewContainer}>
-                {lyrics.lyrics?.map((section, i) => (
-                  <View key={i} style={styles.sectionPreview}>
-                    <Animated.Text style={styles.sectionName}>{section.section_name?.toUpperCase()}</Animated.Text>
-                    {section.lines?.map((line, j) => (
-                      <Animated.Text key={j} style={styles.lyricLine}>{line}</Animated.Text>
-                    ))}
-                  </View>
+            <View style={styles.editorContainer}>
+              <View style={styles.lineNumberColumn}>
+                {lineNumbers.map((num) => (
+                  <Text key={num} style={styles.lineNumber}>{num}</Text>
                 ))}
               </View>
-            )}
-
-            {/* Analysis Mode */}
-            {viewMode === 'analysis' && analysis && (
-              <View style={styles.analysisContainer}>
-                <View style={styles.statsGrid}>
-                  {[
-                    { label: 'Words', value: analysis.word_count, icon: 'format-text' },
-                    { label: 'Lines', value: analysis.line_count, icon: 'format-list-bulleted' },
-                    { label: 'Avg Words/Line', value: analysis.avg_words_per_line, icon: 'chart-line' },
-                    { label: 'Unique Words', value: analysis.unique_words, icon: 'database' },
-                  ].map((stat, i) => (
-                    <View key={i} style={styles.statCard}>
-                      <MaterialCommunityIcons name={stat.icon} size={20} color={COLORS.primary} />
-                      <Animated.Text style={styles.statValue}>{stat.value}</Animated.Text>
-                      <Animated.Text style={styles.statLabel}>{stat.label}</Animated.Text>
-                    </View>
-                  ))}
-                </View>
-
-                {/* Sentiment */}
-                <View style={styles.sentimentCard}>
-                  <Animated.Text style={styles.sentimentLabel}>Sentiment</Animated.Text>
-                  <Animated.Text style={[
-                    styles.sentimentValue,
-                    { color: analysis.sentiment === 'positive' ? COLORS.success : analysis.sentiment === 'negative' ? COLORS.error : COLORS.warning }
-                  ]}>
-                    {analysis.sentiment?.toUpperCase()}
-                  </Animated.Text>
-                  <Animated.Text style={styles.sentimentDetail}>
-                    {analysis.positive_words} positive / {analysis.negative_words} negative words
-                  </Animated.Text>
-                </View>
+              <View style={styles.textAreaContainer}>
+                <TextInput
+                  ref={lyricsRef}
+                  style={styles.lyricsInput}
+                  value={lyrics}
+                  onChangeText={setLyrics}
+                  multiline
+                  textAlignVertical="top"
+                  placeholder="Edit your lyrics..."
+                  placeholderTextColor={COLORS.gray400}
+                  selectionColor="#9C63FF"
+                  scrollEnabled={false}
+                />
               </View>
-            )}
-
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              {[
-                { title: 'More Emotional', icon: 'heart', instruction: 'make it more emotional' },
-                { title: 'Better Rhymes', icon: 'rhombus', instruction: 'improve the rhyme scheme' },
-                { title: 'More Poetic', icon: 'format-text', instruction: 'make it more poetic' },
-              ].map((action, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={styles.actionButton}
-                  onPress={() => {/* Improve lyrics */}}
-                >
-                  <MaterialCommunityIcons name={action.icon} size={20} color={COLORS.primary} />
-                  <Animated.Text style={styles.actionButtonText}>{action.title}</Animated.Text>
-                </TouchableOpacity>
-              ))}
             </View>
 
-            {/* Start Over */}
-            <TouchableOpacity 
-              style={styles.startOverButton}
-              onPress={() => { setLyrics(null); setEditedLyrics(''); setAnalysis(null); }}
-            >
-              <MaterialCommunityIcons name="refresh" size={20} color={COLORS.primary} />
-              <Animated.Text style={styles.startOverText}>Start Over</Animated.Text>
-            </TouchableOpacity>
+            <View style={styles.wordCountBar}>
+              <MaterialCommunityIcons name="format-text" size={14} color={COLORS.gray500} />
+              <Text style={styles.wordCountText}>{wordCount} words · {lines.length} lines</Text>
+            </View>
+
+            <View style={styles.actionBar}>
+              <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
+                <View style={styles.actionIconContainer}>
+                  <MaterialCommunityIcons name="check-circle" size={24} color={COLORS.success} />
+                  {saveState === 'saved' && (
+                    <Animated.View style={[styles.checkmarkOverlay, { transform: [{ scale: saveScale }] }]}>
+                      <MaterialCommunityIcons name="check" size={16} color={COLORS.white} />
+                    </Animated.View>
+                  )}
+                </View>
+                <Text style={[styles.actionLabel, saveState === 'saved' && { color: COLORS.success }]}>
+                  {saveState === 'saved' ? 'Saved!' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+                <View style={styles.actionIconContainer}>
+                  <MaterialCommunityIcons name="share-variant" size={24} color={COLORS.primary} />
+                </View>
+                <Text style={styles.actionLabel}>Share</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.actionButton} onPress={handleNewLyrics}>
+                <View style={styles.actionIconContainer}>
+                  <MaterialCommunityIcons name="refresh" size={24} color={COLORS.secondary} />
+                </View>
+                <Text style={styles.actionLabel}>New Lyrics</Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
         )}
 
@@ -309,15 +324,14 @@ const LyricsCreatorScreen = ({ navigation }) => {
   );
 };
 
+const Text = ({ style, children, ...props }) => (
+  <Animated.Text style={style} {...props}>{children}</Animated.Text>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   header: {
     paddingTop: 50,
@@ -337,19 +351,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.lg,
-  },
-  headerInfo: {
-    flex: 1,
+    marginRight: SPACING.md,
   },
   headerTitle: {
-    fontSize: 24,
+    flex: 1,
+    fontSize: 22,
     fontWeight: '700',
     color: COLORS.white,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+  saveHeaderButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
@@ -363,48 +379,44 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
     ...SHADOWS.small,
   },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.black,
-    marginBottom: SPACING.md,
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   topicInput: {
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
+    flex: 1,
     fontSize: 16,
-    minHeight: 80,
     color: COLORS.black,
+    marginLeft: SPACING.sm,
+    minHeight: 48,
+    paddingTop: 0,
   },
-  selectionCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.xl,
+  styleSection: {
     marginBottom: SPACING.lg,
-    ...SHADOWS.small,
   },
-  selectionLabel: {
-    fontSize: 16,
+  sectionLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    color: COLORS.black,
-    marginBottom: SPACING.md,
+    color: COLORS.gray700,
+    marginBottom: SPACING.sm,
+    marginLeft: SPACING.xs,
+  },
+  chipScroll: {
+    paddingHorizontal: SPACING.xs,
+    gap: SPACING.sm,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.white,
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.sm + 2,
     borderRadius: BORDER_RADIUS.full,
-    marginRight: SPACING.sm,
+    borderWidth: 1.5,
+    borderColor: COLORS.gray200,
+    ...SHADOWS.subtle,
   },
-  chipSelected: {
-    backgroundColor: COLORS.primary,
-  },
-  chipEmoji: {
-    fontSize: 16,
+  chipIcon: {
     marginRight: SPACING.xs,
   },
   chipText: {
@@ -416,174 +428,125 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   generateButton: {
-    marginTop: SPACING.sm,
-  },
-  editorSection: {},
-  titleCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.xl,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.small,
-  },
-  lyricsTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.black,
-    marginBottom: SPACING.md,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
-  viewTabs: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.white,
     borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.xs,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.small,
+    overflow: 'hidden',
+    ...SHADOWS.medium,
   },
-  viewTab: {
-    flex: 1,
+  generateButtonDisabled: {
+    opacity: 0.5,
+  },
+  generateButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.md + 4,
+    borderRadius: BORDER_RADIUS.lg,
   },
-  viewTabSelected: {
-    backgroundColor: COLORS.primary,
+  generateButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: SPACING.sm,
   },
-  viewTabText: {
+  editorSection: {},
+  editorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.lg,
+  },
+  editorTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  editorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginLeft: SPACING.sm,
+    flex: 1,
+  },
+  editorContainer: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xl,
+    minHeight: 400,
+    overflow: 'hidden',
+    ...SHADOWS.small,
+  },
+  lineNumberColumn: {
+    width: 40,
+    backgroundColor: COLORS.gray100,
+    paddingTop: SPACING.lg,
+    alignItems: 'flex-end',
+    paddingRight: SPACING.sm,
+  },
+  lineNumber: {
     fontSize: 12,
-    fontWeight: '600',
+    color: COLORS.gray400,
+    lineHeight: 24,
+    fontFamily: 'monospace',
+  },
+  textAreaContainer: {
+    flex: 1,
+    padding: SPACING.lg,
+  },
+  lyricsInput: {
+    fontSize: 14,
+    lineHeight: 24,
+    color: COLORS.black,
+    fontFamily: 'monospace',
+    minHeight: 360,
+    padding: 0,
+  },
+  wordCountBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.lg,
+    paddingHorizontal: SPACING.xs,
+  },
+  wordCountText: {
+    fontSize: 12,
     color: COLORS.gray500,
     marginLeft: SPACING.xs,
   },
-  viewTabTextSelected: {
-    color: COLORS.white,
-  },
-  lyricsEditor: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.xl,
-    fontSize: 14,
-    lineHeight: 22,
-    minHeight: 400,
-    color: COLORS.black,
-    fontFamily: 'monospace',
-    ...SHADOWS.small,
-  },
-  previewContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.xl,
-    minHeight: 400,
-    ...SHADOWS.small,
-  },
-  sectionPreview: {
-    marginBottom: SPACING.xl,
-  },
-  sectionName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.primary,
-    marginBottom: SPACING.sm,
-  },
-  lyricLine: {
-    fontSize: 16,
-    lineHeight: 26,
-    color: COLORS.gray700,
-    marginBottom: 2,
-  },
-  analysisContainer: {},
-  statsGrid: {
+  actionBar: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  statCard: {
-    width: '47%',
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
-    alignItems: 'center',
-    ...SHADOWS.small,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.primary,
-    marginTop: SPACING.sm,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.gray500,
-    marginTop: 2,
-  },
-  sentimentCard: {
+    justifyContent: 'space-around',
     backgroundColor: COLORS.white,
     borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.xl,
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
+    padding: SPACING.md,
     ...SHADOWS.small,
-  },
-  sentimentLabel: {
-    fontSize: 14,
-    color: COLORS.gray500,
-  },
-  sentimentValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginTop: SPACING.sm,
-  },
-  sentimentDetail: {
-    fontSize: 12,
-    color: COLORS.gray500,
-    marginTop: SPACING.sm,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
   },
   actionButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
-    ...SHADOWS.small,
   },
-  actionButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginLeft: SPACING.sm,
-  },
-  startOverButton: {
-    flexDirection: 'row',
+  actionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.gray100,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: SPACING.lg,
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
+    marginBottom: SPACING.xs,
+    overflow: 'hidden',
   },
-  startOverText: {
-    fontSize: 14,
+  checkmarkOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.success,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionLabel: {
+    fontSize: 11,
     fontWeight: '600',
-    color: COLORS.primary,
-    marginLeft: SPACING.sm,
+    color: COLORS.gray600,
   },
   bottomPadding: {
     height: 100,

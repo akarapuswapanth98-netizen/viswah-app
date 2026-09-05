@@ -1,25 +1,42 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  ScrollView,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
-import { GradientButton, SectionHeader, Tag } from '../components/UIComponents';
+import { Tag } from '../components/UIComponents';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PAD_SIZE = Math.min((SCREEN_WIDTH - SPACING.lg * 2 - SPACING.md) / 3 - SPACING.sm, 130);
 
 const DRUMS = [
-  { id: 'kick', name: 'Kick', icon: 'drum', color: '#E91E63', freq: 60, type: 'sine' },
-  { id: 'snare', name: 'Snare', icon: 'drum', color: '#9C27B0', freq: 200, type: 'triangle' },
-  { id: 'hihat', name: 'Hi-Hat', icon: 'cymbal', color: '#FF9800', freq: 800, type: 'square' },
-  { id: 'tom', name: 'Tom', icon: 'drum', color: '#4CAF50', freq: 120, type: 'sine' },
-  { id: 'cymbal', name: 'Cymbal', icon: 'cymbal', color: '#2196F3', freq: 1200, type: 'sawtooth' },
-  { id: 'clap', name: 'Clap', icon: 'hand', color: '#FF5722', freq: 400, type: 'triangle' },
+  { id: 'tom', name: 'Tom', icon: 'drum', gradient: ['#FF9800', '#F57C00'], freq: 120, type: 'sine', decay: 0.25 },
+  { id: 'cymbal', name: 'Cymbal', icon: 'cymbal', gradient: ['#9C27B0', '#7B1FA2'], freq: 1200, type: 'sawtooth', decay: 0.5 },
+  { id: 'clap', name: 'Clap', icon: 'hand', gradient: ['#E91E63', '#AD1457'], freq: 400, type: 'triangle', decay: 0.15 },
+  { id: 'kick', name: 'Kick', icon: 'drum', gradient: ['#E91E63', '#C2185B'], freq: 60, type: 'sine', decay: 0.3 },
+  { id: 'snare', name: 'Snare', icon: 'drum', gradient: ['#2196F3', '#1565C0'], freq: 200, type: 'triangle', decay: 0.2 },
+  { id: 'hihat', name: 'Hi-Hat', icon: 'cymbal', gradient: ['#4CAF50', '#2E7D32'], freq: 800, type: 'square', decay: 0.08 },
 ];
 
 const BEAT_PATTERNS = [
-  { name: 'Basic Rock', pattern: ['kick', null, 'snare', null, 'kick', null, 'snare', null] },
-  { name: 'Four on Floor', pattern: ['kick', 'kick', 'kick', 'kick', 'snare', 'snare', 'snare', 'snare'] },
-  { name: 'Syncopated', pattern: ['kick', null, null, 'hihat', 'snare', null, 'hihat', null] },
+  {
+    name: 'Basic Rock',
+    pattern: ['kick', null, 'snare', null, 'kick', null, 'snare', null, 'hihat', null, 'hihat', null, 'hihat', null, 'hihat', null],
+  },
+  {
+    name: 'Four on Floor',
+    pattern: ['kick', null, 'kick', null, 'kick', null, 'kick', null, 'snare', null, 'snare', null, 'snare', null, 'snare', null],
+  },
+  {
+    name: 'Syncopated',
+    pattern: ['kick', null, null, 'hihat', 'snare', null, 'hihat', null, 'kick', null, 'hihat', null, 'snare', 'hihat', null, null],
+  },
 ];
 
 const DrumsScreen = ({ navigation }) => {
@@ -27,15 +44,19 @@ const DrumsScreen = ({ navigation }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBeats, setRecordedBeats] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.7);
+  const [bpm, setBpm] = useState(120);
+  const [currentStep, setCurrentStep] = useState(-1);
   const [selectedPattern, setSelectedPattern] = useState(null);
-  const [patternStep, setPatternStep] = useState(-1);
-  
+  const [flashPad, setFlashPad] = useState(null);
+
   const audioContext = useRef(null);
+  const padAnimations = useRef({});
+  const flashAnimations = useRef({});
   const recordingStart = useRef(0);
   const playbackTimeout = useRef(null);
   const patternInterval = useRef(null);
-  const padAnimations = useRef({});
+  const recordPulse = useRef(new Animated.Value(1)).current;
+  const sequencerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     return () => {
@@ -43,6 +64,19 @@ const DrumsScreen = ({ navigation }) => {
       if (patternInterval.current) clearInterval(patternInterval.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (isRecording) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(recordPulse, { toValue: 1.3, duration: 500, useNativeDriver: true }),
+          Animated.timing(recordPulse, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ])
+      ).start();
+    } else {
+      recordPulse.setValue(1);
+    }
+  }, [isRecording]);
 
   const getAudioContext = () => {
     if (!audioContext.current) {
@@ -54,92 +88,162 @@ const DrumsScreen = ({ navigation }) => {
   const playDrum = useCallback((drum) => {
     try {
       const ctx = getAudioContext();
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-      
-      // Different sound synthesis for each drum
-      osc.type = drum.type;
-      
-      if (drum.id === 'kick') {
-        osc.frequency.setValueAtTime(150, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(volume, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      } else if (drum.id === 'snare') {
-        osc.frequency.setValueAtTime(drum.freq, ctx.currentTime);
-        gainNode.gain.setValueAtTime(volume * 0.8, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        // Add noise for snare
-        const noise = ctx.createBufferSource();
-        const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
+      const now = ctx.currentTime;
+
+      if (drum.id === 'snare') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(drum.freq, now);
+        gain.gain.setValueAtTime(0.8, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + drum.decay);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + drum.decay);
+
+        const bufferSize = ctx.sampleRate * 0.2;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
-        for (let i = 0; i < buffer.length; i++) {
-          data[i] = Math.random() * 2 - 1;
-        }
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = ctx.createBufferSource();
         noise.buffer = buffer;
         const noiseGain = ctx.createGain();
-        noiseGain.gain.setValueAtTime(volume * 0.5, ctx.currentTime);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-        noise.connect(noiseGain);
+        noiseGain.gain.setValueAtTime(0.5, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        const noiseFilter = ctx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.value = 1000;
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
         noiseGain.connect(ctx.destination);
-        noise.start(ctx.currentTime);
-        noise.stop(ctx.currentTime + 0.2);
+        noise.start(now);
+        noise.stop(now + 0.2);
       } else if (drum.id === 'hihat') {
-        osc.frequency.setValueAtTime(drum.freq, ctx.currentTime);
-        gainNode.gain.setValueAtTime(volume * 0.6, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+        const bufferSize = ctx.sampleRate * 0.1;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.6, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + drum.decay);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 8000;
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start(now);
+        noise.stop(now + drum.decay);
       } else if (drum.id === 'cymbal') {
-        osc.frequency.setValueAtTime(drum.freq, ctx.currentTime);
-        gainNode.gain.setValueAtTime(volume * 0.7, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        const bufferSize = ctx.sampleRate * 0.6;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + drum.decay);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 5000;
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start(now);
+        noise.stop(now + drum.decay + 0.1);
+      } else if (drum.id === 'clap') {
+        for (let r = 0; r < 3; r++) {
+          const offset = r * 0.01;
+          const bufferSize = ctx.sampleRate * 0.05;
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+          const noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          const gain = ctx.createGain();
+          gain.gain.setValueAtTime(0.7, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + offset + drum.decay);
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.value = drum.freq;
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+          noise.start(now + offset);
+          noise.stop(now + offset + drum.decay + 0.05);
+        }
       } else {
-        osc.frequency.setValueAtTime(drum.freq, ctx.currentTime);
-        gainNode.gain.setValueAtTime(volume, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = drum.id === 'kick' ? 'sine' : drum.type;
+        if (drum.id === 'kick') {
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.exponentialRampToValueAtTime(drum.freq, now + 0.07);
+        } else {
+          osc.frequency.setValueAtTime(drum.freq, now);
+        }
+        gain.gain.setValueAtTime(1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + drum.decay);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + drum.decay + 0.05);
       }
-      
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(5000, ctx.currentTime);
-      
-      osc.connect(filter);
-      filter.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.5);
-      
-      // Visual feedback
+
       setActiveDrum(drum.id);
-      
+      setFlashPad(drum.id);
+
       if (!padAnimations.current[drum.id]) {
         padAnimations.current[drum.id] = new Animated.Value(1);
       }
+      if (!flashAnimations.current[drum.id]) {
+        flashAnimations.current[drum.id] = new Animated.Value(0);
+      }
+
       Animated.sequence([
         Animated.timing(padAnimations.current[drum.id], {
-          toValue: 0.9,
-          duration: 50,
+          toValue: 0.88,
+          duration: 40,
           useNativeDriver: true,
         }),
         Animated.spring(padAnimations.current[drum.id], {
           toValue: 1,
-          tension: 200,
-          friction: 10,
+          tension: 300,
+          friction: 8,
           useNativeDriver: true,
         }),
       ]).start();
-      
-      // Record beat
+
+      Animated.sequence([
+        Animated.timing(flashAnimations.current[drum.id], {
+          toValue: 0.5,
+          duration: 30,
+          useNativeDriver: true,
+        }),
+        Animated.timing(flashAnimations.current[drum.id], {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
       if (isRecording) {
         const timestamp = Date.now() - recordingStart.current;
-        setRecordedBeats(prev => [...prev, { drum: drum.id, time: timestamp }]);
+        setRecordedBeats((prev) => [...prev, { drum: drum.id, time: timestamp }]);
       }
-      
-      setTimeout(() => setActiveDrum(null), 150);
+
+      setTimeout(() => {
+        setActiveDrum(null);
+        setFlashPad(null);
+      }, 150);
     } catch (e) {
       console.error('Error playing drum:', e);
     }
-  }, [volume, isRecording]);
+  }, [isRecording]);
 
   const handleRecord = () => {
     if (isRecording) {
@@ -153,28 +257,22 @@ const DrumsScreen = ({ navigation }) => {
 
   const handlePlayback = () => {
     if (recordedBeats.length === 0) return;
-    
     setIsPlaying(true);
     let index = 0;
-    
+
     const playNext = () => {
       if (index >= recordedBeats.length) {
         setIsPlaying(false);
         return;
       }
-      
       const beat = recordedBeats[index];
-      const drum = DRUMS.find(d => d.id === beat.drum);
+      const drum = DRUMS.find((d) => d.id === beat.drum);
       if (drum) playDrum(drum);
-      
       index++;
-      const delay = index < recordedBeats.length 
-        ? recordedBeats[index].time - beat.time 
-        : 200;
-      
+      const delay = index < recordedBeats.length ? recordedBeats[index].time - beat.time : 200;
       playbackTimeout.current = setTimeout(playNext, Math.max(delay, 50));
     };
-    
+
     playNext();
   };
 
@@ -182,198 +280,248 @@ const DrumsScreen = ({ navigation }) => {
     setRecordedBeats([]);
     if (playbackTimeout.current) clearTimeout(playbackTimeout.current);
     setIsPlaying(false);
+    setCurrentStep(-1);
+    setSelectedPattern(null);
+    if (patternInterval.current) {
+      clearInterval(patternInterval.current);
+      patternInterval.current = null;
+    }
   };
 
   const handlePatternPlay = (pattern) => {
     if (patternInterval.current) {
       clearInterval(patternInterval.current);
+      patternInterval.current = null;
       setPatternStep(-1);
+      setCurrentStep(-1);
       setSelectedPattern(null);
       return;
     }
-    
+
     setSelectedPattern(pattern.name);
     let step = 0;
-    
+    const stepDuration = 60000 / bpm / 2;
+
     patternInterval.current = setInterval(() => {
       const drumId = pattern.pattern[step % pattern.pattern.length];
       if (drumId) {
-        const drum = DRUMS.find(d => d.id === drumId);
+        const drum = DRUMS.find((d) => d.id === drumId);
         if (drum) playDrum(drum);
       }
-      setPatternStep(step % pattern.pattern.length);
+      setCurrentStep(step % pattern.pattern.length);
+
+      sequencerAnim.setValue(0);
+      Animated.timing(sequencerAnim, {
+        toValue: 1,
+        duration: stepDuration * 0.9,
+        useNativeDriver: false,
+      }).start();
+
       step++;
-    }, 250); // 240 BPM = 250ms per step
+    }, stepDuration);
   };
 
-  const renderDrumPad = (drum) => {
+  const renderDrumPad = (drum, index) => {
+    const scale = padAnimations.current[drum.id] || new Animated.Value(1);
+    const flash = flashAnimations.current[drum.id] || new Animated.Value(0);
     const isActive = activeDrum === drum.id;
-    const anim = padAnimations.current[drum.id] || new Animated.Value(1);
-    
+
     return (
       <TouchableOpacity
         key={drum.id}
-        style={[styles.drumPad, { borderColor: drum.color }]}
         onPressIn={() => playDrum(drum)}
-        activeOpacity={0.8}
+        activeOpacity={1}
+        style={styles.padWrapper}
       >
-        <Animated.View style={[styles.drumPadInner, { transform: [{ scale: anim }] }, isActive && { backgroundColor: drum.color }]}>
-          <MaterialCommunityIcons 
-            name={drum.icon} 
-            size={36} 
-            color={isActive ? COLORS.white : drum.color} 
-          />
-          <Animated.Text style={[styles.drumPadText, isActive && styles.drumPadTextActive]}>
-            {drum.name}
-          </Animated.Text>
-          {isActive && <View style={[styles.drumPadGlow, { backgroundColor: drum.color }]} />}
+        <Animated.View
+          style={[
+            styles.pad,
+            {
+              transform: [{ scale }],
+            },
+          ]}
+        >
+          <LinearGradient
+            {...createGradient(drum.gradient)}
+            style={styles.padGradient}
+          >
+            <Animated.View style={[styles.padFlash, { opacity: flash }]} />
+            <View style={styles.padIconContainer}>
+              <MaterialCommunityIcons
+                name={drum.icon}
+                size={40}
+                color="rgba(255,255,255,0.95)"
+              />
+            </View>
+            <View style={styles.padLabelContainer}>
+              <Animated.Text style={styles.padLabel}>{drum.name}</Animated.Text>
+            </View>
+          </LinearGradient>
         </Animated.View>
       </TouchableOpacity>
     );
   };
 
+  const renderSequencerDot = (step, drumId, isLast) => {
+    const isActive = currentStep === step;
+    return (
+      <View key={step} style={styles.sequencerDotContainer}>
+        <View
+          style={[
+            styles.sequencerDot,
+            isActive && styles.sequencerDotActive,
+            isActive && { backgroundColor: DRUMS.find((d) => d.id === drumId)?.gradient[0] || COLORS.primary },
+          ]}
+        />
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
       <LinearGradient
-        {...createGradient(['#E91E63', '#9C27B0'])}
-        style={styles.header}
+        {...createGradient(['#1A1A2E', '#2D2D44'])}
+        style={styles.background}
       >
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
+        <View style={styles.header}>
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
+            <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.white} />
           </TouchableOpacity>
-          <View style={styles.headerInfo}>
+          <View style={styles.headerCenter}>
             <Animated.Text style={styles.headerTitle}>Virtual Drums</Animated.Text>
-            <Animated.Text style={styles.headerSubtitle}>6 pads - Multi-touch ready</Animated.Text>
+          </View>
+          <View style={styles.bpmContainer}>
+            <Animated.Text style={styles.bpmValue}>{bpm}</Animated.Text>
+            <Animated.Text style={styles.bpmLabel}>BPM</Animated.Text>
           </View>
         </View>
-      </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Active Drum Display */}
-        <View style={styles.activeDisplay}>
-          <Animated.Text style={styles.activeDrumName}>
-            {activeDrum ? DRUMS.find(d => d.id === activeDrum)?.name : 'Tap a pad'}
-          </Animated.Text>
-        </View>
-
-        {/* Drum Pads Grid */}
-        <View style={styles.padsGrid}>
-          {DRUMS.map(drum => renderDrumPad(drum))}
-        </View>
-
-        {/* Volume Control */}
-        <View style={styles.controlCard}>
-          <View style={styles.controlRow}>
-            <MaterialCommunityIcons name="volume-low" size={20} color={COLORS.gray500} />
-            <View style={styles.sliderContainer}>
-              {[0, 0.25, 0.5, 0.75, 1].map((v) => (
-                <TouchableOpacity
-                  key={v}
-                  style={[styles.volumeButton, volume === v && styles.volumeButtonActive]}
-                  onPress={() => setVolume(v)}
-                >
-                  <View style={[styles.volumeIndicator, { height: `${v * 100}%`, backgroundColor: volume >= v ? '#E91E63' : COLORS.gray300 }]} />
-                </TouchableOpacity>
-              ))}
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.padGrid}>
+            <View style={styles.padRow}>
+              {DRUMS.slice(0, 3).map((drum, i) => renderDrumPad(drum, i))}
             </View>
-            <MaterialCommunityIcons name="volume-high" size={20} color={COLORS.gray500} />
-            <Animated.Text style={styles.volumeText}>{Math.round(volume * 100)}%</Animated.Text>
+            <View style={styles.padRow}>
+              {DRUMS.slice(3, 6).map((drum, i) => renderDrumPad(drum, i + 3))}
+            </View>
           </View>
-        </View>
 
-        {/* Record Controls */}
-        <View style={styles.recordCard}>
-          <View style={styles.recordHeader}>
-            <MaterialCommunityIcons name="record" size={20} color={isRecording ? COLORS.error : COLORS.gray500} />
-            <Animated.Text style={styles.recordTitle}>
-              {isRecording ? 'Recording...' : 'Record & Playback'}
-            </Animated.Text>
+          <View style={styles.controlsBar}>
+            <TouchableOpacity
+              style={[styles.controlButton, isRecording && styles.controlButtonRecording]}
+              onPress={handleRecord}
+            >
+              {isRecording ? (
+                <Animated.View style={{ transform: [{ scale: recordPulse }] }}>
+                  <MaterialCommunityIcons name="record" size={20} color="#FF1744" />
+                </Animated.View>
+              ) : (
+                <MaterialCommunityIcons name="record" size={20} color="#FF1744" />
+              )}
+              <Animated.Text style={[styles.controlLabel, isRecording && styles.controlLabelActive]}>
+                {isRecording ? 'Stop' : 'Record'}
+              </Animated.Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.controlButton, recordedBeats.length === 0 && styles.controlButtonDisabled]}
+              onPress={isPlaying ? handleClear : handlePlayback}
+              disabled={recordedBeats.length === 0 && !isPlaying}
+            >
+              <MaterialCommunityIcons
+                name={isPlaying ? 'stop' : 'play'}
+                size={20}
+                color={recordedBeats.length === 0 ? COLORS.gray500 : COLORS.white}
+              />
+              <Animated.Text
+                style={[
+                  styles.controlLabel,
+                  recordedBeats.length === 0 && styles.controlLabelDisabled,
+                ]}
+              >
+                {isPlaying ? 'Stop' : 'Play'}
+              </Animated.Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.controlButton} onPress={handleClear}>
+              <MaterialCommunityIcons name="delete-outline" size={20} color="#FF6E40" />
+              <Animated.Text style={styles.controlLabel}>Clear</Animated.Text>
+            </TouchableOpacity>
+
             {recordedBeats.length > 0 && (
               <Tag label={`${recordedBeats.length} beats`} size="small" />
             )}
           </View>
-          
-          <View style={styles.recordButtons}>
-            <TouchableOpacity
-              style={[styles.recordButton, isRecording && styles.recordButtonActive]}
-              onPress={handleRecord}
-            >
-              <MaterialCommunityIcons 
-                name={isRecording ? "stop" : "record"} 
-                size={24} 
-                color={COLORS.white} 
-              />
-              <Animated.Text style={styles.recordButtonText}>
-                {isRecording ? 'Stop' : 'Record'}
-              </Animated.Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.playButton, recordedBeats.length === 0 && styles.playButtonDisabled]}
-              onPress={handlePlayback}
-              disabled={recordedBeats.length === 0 || isPlaying}
-            >
-              <MaterialCommunityIcons 
-                name={isPlaying ? "stop" : "play"} 
-                size={24} 
-                color={COLORS.white} 
-              />
-              <Animated.Text style={styles.playButtonText}>
-                {isPlaying ? 'Playing...' : 'Play'}
-              </Animated.Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={handleClear}
-            >
-              <MaterialCommunityIcons name="delete" size={20} color={COLORS.error} />
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Beat Patterns */}
-        <View style={styles.patternCard}>
-          <Animated.Text style={styles.patternTitle}>Beat Patterns</Animated.Text>
-          <View style={styles.patternList}>
-            {BEAT_PATTERNS.map((pattern, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.patternItem, selectedPattern === pattern.name && styles.patternItemActive]}
-                onPress={() => handlePatternPlay(pattern)}
-              >
-                <MaterialCommunityIcons 
-                  name={selectedPattern === pattern.name ? "stop-circle" : "play-circle"} 
-                  size={24} 
-                  color={selectedPattern === pattern.name ? COLORS.error : COLORS.primary} 
-                />
-                <View style={styles.patternInfo}>
-                  <Animated.Text style={styles.patternName}>{pattern.name}</Animated.Text>
-                  <View style={styles.patternDots}>
-                    {pattern.pattern.map((step, i) => (
-                      <View 
-                        key={i} 
-                        style={[
-                          styles.patternDot,
-                          step && styles.patternDotActive,
-                          patternStep === i && styles.patternDotCurrent,
-                        ]} 
-                      />
-                    ))}
-                  </View>
+          <View style={styles.sequencerCard}>
+            <Animated.Text style={styles.sequencerTitle}>16-Step Sequencer</Animated.Text>
+            <View style={styles.sequencerRow}>
+              {Array.from({ length: 16 }).map((_, i) => (
+                <View key={i} style={styles.sequencerDotOuter}>
+                  <View
+                    style={[
+                      styles.sequencerDot,
+                      currentStep === i && styles.sequencerDotActive,
+                    ]}
+                  />
                 </View>
-              </TouchableOpacity>
-            ))}
+              ))}
+            </View>
+            {selectedPattern && (
+              <Animated.Text style={styles.patternIndicator}>
+                {selectedPattern} - Step {(currentStep % 16) + 1}
+              </Animated.Text>
+            )}
           </View>
-        </View>
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
+          <View style={styles.patternCard}>
+            <Animated.Text style={styles.patternTitle}>Beat Patterns</Animated.Text>
+            <View style={styles.patternList}>
+              {BEAT_PATTERNS.map((pattern, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.patternItem,
+                    selectedPattern === pattern.name && styles.patternItemActive,
+                  ]}
+                  onPress={() => handlePatternPlay(pattern)}
+                >
+                  <MaterialCommunityIcons
+                    name={selectedPattern === pattern.name ? 'stop-circle' : 'play-circle'}
+                    size={28}
+                    color={selectedPattern === pattern.name ? '#FF1744' : COLORS.white}
+                  />
+                  <View style={styles.patternInfo}>
+                    <Animated.Text style={styles.patternName}>{pattern.name}</Animated.Text>
+                    <View style={styles.patternDots}>
+                      {pattern.pattern.map((step, i) => (
+                        <View
+                          key={i}
+                          style={[
+                            styles.patternDot,
+                            step && styles.patternDotActive,
+                            currentStep === i && selectedPattern === pattern.name && styles.patternDotCurrent,
+                            step && { backgroundColor: DRUMS.find((d) => d.id === step)?.gradient[0] || COLORS.primary },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </LinearGradient>
     </View>
   );
 };
@@ -381,213 +529,203 @@ const DrumsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+  },
+  background: {
+    flex: 1,
   },
   header: {
-    paddingTop: 50,
-    paddingBottom: SPACING.xl,
-    borderBottomLeftRadius: BORDER_RADIUS.xxl,
-    borderBottomRightRadius: BORDER_RADIUS.xxl,
-  },
-  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: SPACING.lg,
     paddingHorizontal: SPACING.lg,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.lg,
   },
-  headerInfo: {
+  headerCenter: {
     flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: COLORS.white,
+    letterSpacing: 0.5,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+  bpmContainer: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+  },
+  bpmValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.white,
+  },
+  bpmLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
   },
   content: {
     flex: 1,
-    padding: SPACING.lg,
   },
-  activeDisplay: {
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.xl,
+  contentContainer: {
+    paddingHorizontal: SPACING.lg,
+  },
+  padGrid: {
     marginBottom: SPACING.lg,
-    ...SHADOWS.small,
   },
-  activeDrumName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  padsGrid: {
+  padRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-    marginBottom: SPACING.xl,
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
   },
-  drumPad: {
-    width: (SCREEN_WIDTH - 56) / 2,
-    height: (SCREEN_WIDTH - 56) / 2,
-    borderRadius: BORDER_RADIUS.xl,
-    borderWidth: 3,
-    overflow: 'hidden',
-    ...SHADOWS.medium,
+  padWrapper: {
+    width: PAD_SIZE,
+    height: PAD_SIZE,
   },
-  drumPadInner: {
+  pad: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.lg,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  padGradient: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: BORDER_RADIUS.lg,
   },
-  drumPadText: {
-    fontSize: 14,
+  padFlash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  padIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
+  },
+  padLabelContainer: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  padLabel: {
+    fontSize: 11,
     fontWeight: '700',
-    color: COLORS.gray700,
+    color: COLORS.white,
+    letterSpacing: 0.5,
+  },
+  controlsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.md,
+    marginBottom: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  controlButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    minWidth: 64,
+  },
+  controlButtonRecording: {
+    backgroundColor: 'rgba(255,23,68,0.15)',
+    borderWidth: 1,
+    borderColor: '#FF1744',
+  },
+  controlButtonDisabled: {
+    opacity: 0.4,
+  },
+  controlLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.white,
+    marginTop: 2,
+  },
+  controlLabelActive: {
+    color: '#FF1744',
+  },
+  controlLabelDisabled: {
+    color: COLORS.gray500,
+  },
+  sequencerCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+  },
+  sequencerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: SPACING.md,
+    letterSpacing: 0.5,
+  },
+  sequencerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  sequencerDotOuter: {
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sequencerDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  sequencerDotActive: {
+    backgroundColor: COLORS.white,
+    shadowColor: COLORS.white,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  patternIndicator: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.4)',
     marginTop: SPACING.sm,
-  },
-  drumPadTextActive: {
-    color: COLORS.white,
-  },
-  drumPadGlow: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 4,
-    opacity: 0.8,
-  },
-  controlCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.small,
-  },
-  controlRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sliderContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    height: 40,
-    marginHorizontal: SPACING.md,
-    gap: 8,
-  },
-  volumeButton: {
-    width: 20,
-    height: 40,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  volumeButtonActive: {},
-  volumeIndicator: {
-    width: '100%',
-    borderRadius: 4,
-  },
-  volumeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.gray600,
-    marginLeft: SPACING.sm,
-    minWidth: 36,
-  },
-  recordCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.small,
-  },
-  recordHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-  },
-  recordTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.black,
-    marginLeft: SPACING.sm,
-  },
-  recordButtons: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  recordButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.error,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-  },
-  recordButtonActive: {
-    backgroundColor: COLORS.error,
-  },
-  recordButtonText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
-  },
-  playButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-  },
-  playButtonDisabled: {
-    backgroundColor: COLORS.gray300,
-  },
-  playButtonText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
-  },
-  clearButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.gray100,
-    borderRadius: BORDER_RADIUS.lg,
+    textAlign: 'center',
   },
   patternCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
     marginBottom: SPACING.lg,
-    ...SHADOWS.small,
   },
   patternTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.black,
-    marginBottom: SPACING.lg,
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.white,
+    marginBottom: SPACING.md,
   },
   patternList: {
     gap: SPACING.sm,
@@ -595,41 +733,44 @@ const styles = StyleSheet.create({
   patternItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray100,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.md,
   },
   patternItemActive: {
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   patternInfo: {
     flex: 1,
     marginLeft: SPACING.md,
   },
   patternName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.white,
     marginBottom: SPACING.xs,
   },
   patternDots: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 3,
   },
   patternDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.gray300,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   patternDotActive: {
-    backgroundColor: COLORS.primary,
+    opacity: 0.8,
   },
   patternDotCurrent: {
-    backgroundColor: COLORS.error,
-  },
-  bottomPadding: {
-    height: 100,
+    backgroundColor: COLORS.white,
+    shadowColor: COLORS.white,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
   },
 });
 

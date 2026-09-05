@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+  Easing,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
-import { GradientButton, ProgressBar } from '../components/UIComponents';
+import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 
 const LessonScreen = ({ route, navigation }) => {
@@ -11,36 +18,79 @@ const LessonScreen = ({ route, navigation }) => {
   const [lesson, setLesson] = useState(null);
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const contentFade = useRef(new Animated.Value(0)).current;
+  const markCompleteAnim = useRef(new Animated.Value(1)).current;
+  const markCompleteBg = useRef(new Animated.Value(0)).current;
+  const markCompleteWidth = useRef(new Animated.Value(1)).current;
+  const checkScale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     fetchLesson();
-    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
   }, []);
 
   const fetchLesson = async () => {
     try {
       const [lessonRes, progressRes] = await Promise.all([
         authFetch(api.lesson(lessonId)),
-        authFetch(`${api.progress}/${courseId}/${lessonId}`),
+        authFetch(`${api.progressByLesson(lessonId)}`),
       ]);
 
       if (lessonRes.ok) setLesson(await lessonRes.json());
-      if (progressRes.ok) setProgress(await progressRes.json());
+      if (progressRes.ok) {
+        const data = await progressRes.json();
+        const record = Array.isArray(data) ? data[0] : data;
+        setProgress(record);
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+      Animated.timing(contentFade, {
+        toValue: 1,
+        duration: 600,
+        delay: 200,
+        useNativeDriver: true,
+      }).start();
     }
   };
 
   const handleMarkComplete = async () => {
+    if (progress?.completed) return;
+
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(markCompleteWidth, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+        Animated.timing(markCompleteAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.spring(checkScale, {
+        toValue: 1,
+        tension: 100,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     try {
-      const res = await authFetch(`${api.progress}/${courseId}/${lessonId}`, {
+      const res = await authFetch(api.progressById(lessonId), {
         method: 'POST',
         body: JSON.stringify({ completed: true, score: 100 }),
       });
-      
       if (res.ok) {
         setProgress({ completed: true, score: 100 });
       }
@@ -57,6 +107,193 @@ const LessonScreen = ({ route, navigation }) => {
     });
   };
 
+  const renderContentBlock = (block, index) => {
+    if (!block) return null;
+
+    const fadeIn = contentFade.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
+
+    const slideUp = contentFade.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 0],
+    });
+
+    switch (block.type) {
+      case 'header':
+        return (
+          <Animated.View
+            key={index}
+            style={[styles.contentHeader, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
+          >
+            <View style={styles.contentHeaderText}>{block.text}</View>
+          </Animated.View>
+        );
+
+      case 'paragraph':
+        return (
+          <Animated.View
+            key={index}
+            style={[styles.contentParagraph, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
+          >
+            <View style={styles.contentParagraphText}>{block.text}</View>
+          </Animated.View>
+        );
+
+      case 'list':
+        return (
+          <Animated.View
+            key={index}
+            style={[styles.contentList, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
+          >
+            {(block.items || []).map((item, i) => (
+              <View key={i} style={styles.listItem}>
+                <View style={[styles.listBullet, { backgroundColor: COLORS.primary }]} />
+                <View style={styles.listItemText}>{item}</View>
+              </View>
+            ))}
+          </Animated.View>
+        );
+
+      case 'bold':
+        return (
+          <Animated.View
+            key={index}
+            style={[styles.contentBold, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
+          >
+            <View style={styles.contentBoldText}>{block.text}</View>
+          </Animated.View>
+        );
+
+      case 'divider':
+        return (
+          <Animated.View
+            key={index}
+            style={[styles.contentDivider, { opacity: fadeIn }]}
+          />
+        );
+
+      default:
+        return (
+          <Animated.View
+            key={index}
+            style={[styles.contentParagraph, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
+          >
+            <View style={styles.contentParagraphText}>{block.text || block}</View>
+          </Animated.View>
+        );
+    }
+  };
+
+  const renderLessonContent = () => {
+    if (!lesson?.content) {
+      return (
+        <View style={styles.emptyContent}>
+          <MaterialCommunityIcons name="book-open-variant" size={48} color={COLORS.gray300} />
+          <View style={styles.emptyContentText}>No content available for this lesson yet.</View>
+        </View>
+      );
+    }
+
+    if (typeof lesson.content === 'string') {
+      const paragraphs = lesson.content.split('\n').filter((p) => p.trim());
+      return paragraphs.map((p, i) =>
+        renderContentBlock({ type: 'paragraph', text: p }, i)
+      );
+    }
+
+    if (Array.isArray(lesson.content)) {
+      return lesson.content.map((block, i) => renderContentBlock(block, i));
+    }
+
+    return (
+      <View style={styles.emptyContent}>
+        <MaterialCommunityIcons name="book-open-variant" size={48} color={COLORS.gray300} />
+        <View style={styles.emptyContentText}>No content available for this lesson yet.</View>
+      </View>
+    );
+  };
+
+  const isCompleted = progress?.completed;
+
+  const renderMarkCompleteButton = () => {
+    const bgInterpolate = markCompleteBg.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
+
+    return (
+      <View style={styles.bottomBar}>
+        <Animated.View
+          style={[
+            styles.markCompleteWrapper,
+            {
+              flex: markCompleteWidth,
+              opacity: markCompleteAnim,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={handleMarkComplete}
+            disabled={isCompleted}
+            activeOpacity={0.8}
+            style={[styles.markCompleteButton, isCompleted && styles.markCompleteButtonDone]}
+          >
+            <LinearGradient
+              {...createGradient(isCompleted ? [COLORS.success, '#388E3C'] : [COLORS.primary, COLORS.primaryDark])}
+              style={styles.markCompleteGradient}
+            >
+              <MaterialCommunityIcons
+                name={isCompleted ? 'check-circle' : 'check'}
+                size={20}
+                color={COLORS.white}
+              />
+              <View style={styles.markCompleteText}>
+                {isCompleted ? 'Completed' : 'Mark Complete'}
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.checkDoneContainer,
+            {
+              flex: Animated.add(1, Animated.multiply(-1, markCompleteWidth)),
+              opacity: checkScale,
+            },
+          ]}
+        >
+          <View style={styles.checkDoneBadge}>
+            <Animated.View style={{ transform: [{ scale: checkScale }] }}>
+              <MaterialCommunityIcons name="check-circle" size={28} color={COLORS.white} />
+            </Animated.View>
+          </View>
+        </Animated.View>
+
+        <TouchableOpacity
+          onPress={handleTakeQuiz}
+          activeOpacity={0.8}
+          style={styles.quizButton}
+        >
+          <View style={styles.quizButtonInner}>
+            <MaterialCommunityIcons name="frequently-asked-questions" size={18} color={COLORS.primary} />
+            <View style={styles.quizButtonText}>Quiz</View>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.8}
+          style={styles.backButtonBar}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={20} color={COLORS.gray600} />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -65,118 +302,119 @@ const LessonScreen = ({ route, navigation }) => {
     );
   }
 
-  const isCompleted = progress?.completed;
-
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={[COLORS.primary, COLORS.primaryDark]}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
-          </TouchableOpacity>
-          
-          <View style={styles.headerInfo}>
-            <Animated.Text style={styles.lessonTitle}>{lesson?.title || 'Lesson'}</Animated.Text>
-            <Animated.Text style={styles.courseName}>{courseName}</Animated.Text>
-          </View>
-        </View>
+      {/* Sticky Header */}
+      <Animated.View style={[styles.stickyHeader, { opacity: fadeAnim }]}>
+        <LinearGradient
+          colors={[COLORS.primary, COLORS.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerRow}>
+            <TouchableOpacity
+              style={styles.headerBackButton}
+              onPress={() => navigation.goBack()}
+            >
+              <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.white} />
+            </TouchableOpacity>
 
-        {/* Status Badge */}
-        <View style={styles.statusContainer}>
-          <View style={[styles.statusBadge, isCompleted && styles.statusBadgeCompleted]}>
-            <MaterialCommunityIcons 
-              name={isCompleted ? "check-circle" : "clock-outline"} 
-              size={20} 
-              color={isCompleted ? COLORS.white : COLORS.white} 
-            />
-            <Animated.Text style={styles.statusText}>
-              {isCompleted ? 'Completed' : 'In Progress'}
-            </Animated.Text>
-          </View>
-          {progress?.score && (
-            <View style={styles.scoreBadge}>
-              <MaterialCommunityIcons name="star" size={16} color={COLORS.white} />
-              <Animated.Text style={styles.scoreText}>{progress.score}%</Animated.Text>
+            <View style={styles.headerInfo}>
+              <View style={styles.headerTitleText}>{lesson?.title || 'Lesson'}</View>
+              <View style={styles.headerSubText}>{courseName}</View>
             </View>
-          )}
-        </View>
-      </LinearGradient>
 
-      {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Lesson Content */}
-        <Animated.View style={[styles.contentCard, { opacity: fadeAnim }]}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="book-open-variant" size={24} color={COLORS.primary} />
-            <Animated.Text style={styles.sectionTitle}>Lesson Content</Animated.Text>
-          </View>
-          
-          <Animated.Text style={styles.contentText}>
-            {lesson?.content || 'No content available'}
-          </Animated.Text>
-        </Animated.View>
+            {lesson?.duration && (
+              <View style={styles.durationBadge}>
+                <MaterialCommunityIcons name="clock-outline" size={14} color={COLORS.white} />
+                <View style={styles.durationText}>{lesson.duration}m</View>
+              </View>
+            )}
 
-        {/* Quiz Section */}
-        <Animated.View style={[styles.quizCard, { opacity: fadeAnim }]}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="frequently-asked-questions" size={24} color={COLORS.secondary} />
-            <Animated.Text style={styles.sectionTitle}>Quiz</Animated.Text>
-          </View>
-          
-          <Animated.Text style={styles.quizDescription}>
-            Test your knowledge with a quick quiz
-          </Animated.Text>
-          
-          <GradientButton
-            title="Take Quiz"
-            onPress={handleTakeQuiz}
-            icon="quiz"
-            colors={COLORS.gradient.sunset}
-            style={styles.quizButton}
-          />
-        </Animated.View>
-
-        {/* Mark Complete Button */}
-        {!isCompleted && (
-          <Animated.View style={[styles.completeCard, { opacity: fadeAnim }]}>
-            <GradientButton
-              title="Mark as Complete"
-              onPress={handleMarkComplete}
-              icon="check-circle"
-              colors={COLORS.gradient.ocean}
-              style={styles.completeButton}
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: isCompleted ? COLORS.success : COLORS.warning },
+              ]}
             />
+          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      {/* Scrollable Content */}
+      <ScrollView
+        style={styles.contentArea}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        {/* Status Banner */}
+        <Animated.View style={[styles.statusBanner, { opacity: fadeAnim }]}>
+          <View
+            style={[
+              styles.statusBannerInner,
+              {
+                backgroundColor: isCompleted ? `${COLORS.success}15` : `${COLORS.primary}10`,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={isCompleted ? 'check-circle' : 'clock-outline'}
+              size={20}
+              color={isCompleted ? COLORS.success : COLORS.primary}
+            />
+            <View
+              style={[
+                styles.statusBannerText,
+                { color: isCompleted ? COLORS.success : COLORS.primary },
+              ]}
+            >
+              {isCompleted ? 'Lesson Completed' : 'In Progress'}
+            </View>
+            {isCompleted && progress?.score && (
+              <View style={styles.scoreInline}>
+                <MaterialCommunityIcons name="star" size={14} color={COLORS.warning} />
+                <View style={styles.scoreInlineText}>{progress.score}%</View>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Lesson Content */}
+        <Animated.View style={[styles.contentCard, { opacity: contentFade }]}>
+          <View style={styles.contentCardHeader}>
+            <MaterialCommunityIcons name="book-open-variant" size={22} color={COLORS.primary} />
+            <View style={styles.contentCardTitle}>Lesson Content</View>
+          </View>
+
+          {renderLessonContent()}
+        </Animated.View>
+
+        {/* Quick Actions */}
+        {!isCompleted && (
+          <Animated.View style={[styles.quickActions, { opacity: fadeAnim }]}>
+            <TouchableOpacity
+              onPress={handleTakeQuiz}
+              activeOpacity={0.8}
+              style={styles.quizActionCard}
+            >
+              <View style={styles.quizActionInner}>
+                <MaterialCommunityIcons name="frequently-asked-questions" size={24} color={COLORS.secondary} />
+                <View style={styles.quizActionInfo}>
+                  <View style={styles.quizActionTitle}>Take the Quiz</View>
+                  <View style={styles.quizActionDesc}>Test your knowledge from this lesson</View>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.gray400} />
+              </View>
+            </TouchableOpacity>
           </Animated.View>
         )}
 
-        {/* Navigation */}
-        <View style={styles.navigation}>
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={20} color={COLORS.primary} />
-            <Animated.Text style={styles.navButtonText}>Previous</Animated.Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navButton}
-            onPress={() => navigation.navigate('Course', { courseId })}
-          >
-            <Animated.Text style={styles.navButtonText}>Course</Animated.Text>
-            <MaterialCommunityIcons name="book" size={20} color={COLORS.primary} />
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Bottom Action Bar */}
+      {renderMarkCompleteButton()}
     </View>
   );
 };
@@ -191,80 +429,100 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    paddingTop: 50,
-    paddingBottom: SPACING.xl,
-    borderBottomLeftRadius: BORDER_RADIUS.xxl,
-    borderBottomRightRadius: BORDER_RADIUS.xxl,
+
+  // Sticky Header
+  stickyHeader: {
+    zIndex: 10,
   },
-  headerContent: {
+  headerGradient: {
+    paddingTop: 50,
+    paddingBottom: SPACING.lg,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
-    marginBottom: SPACING.lg,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  headerBackButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.lg,
+    marginRight: SPACING.md,
   },
   headerInfo: {
     flex: 1,
   },
-  lessonTitle: {
-    fontSize: 22,
+  headerTitleText: {
+    fontSize: 18,
     fontWeight: '700',
     color: COLORS.white,
-    marginBottom: SPACING.xs,
+    marginBottom: 2,
   },
-  courseName: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+  headerSubText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
   },
-  statusContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  statusBadge: {
+  durationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.full,
+    marginRight: SPACING.sm,
   },
-  statusBadgeCompleted: {
-    backgroundColor: COLORS.success,
-  },
-  statusText: {
-    color: COLORS.white,
+  durationText: {
     fontSize: 12,
     fontWeight: '600',
-    marginLeft: SPACING.xs,
-  },
-  scoreBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: BORDER_RADIUS.full,
-  },
-  scoreText: {
     color: COLORS.white,
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
+    marginLeft: 4,
   },
-  content: {
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+
+  // Content Area
+  contentArea: {
     flex: 1,
+  },
+  contentContainer: {
     padding: SPACING.lg,
   },
+
+  // Status Banner
+  statusBanner: {
+    marginBottom: SPACING.lg,
+  },
+  statusBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  statusBannerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: SPACING.sm,
+    flex: 1,
+  },
+  scoreInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scoreInlineText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.warning,
+    marginLeft: 4,
+  },
+
+  // Content Card
   contentCard: {
     backgroundColor: COLORS.white,
     borderRadius: BORDER_RADIUS.xl,
@@ -272,63 +530,200 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
     ...SHADOWS.small,
   },
-  quizCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.xl,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.small,
-  },
-  completeCard: {
-    marginBottom: SPACING.lg,
-  },
-  sectionHeader: {
+  contentCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
+    paddingBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray200,
   },
-  sectionTitle: {
+  contentCardTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.black,
     marginLeft: SPACING.sm,
   },
-  contentText: {
-    fontSize: 16,
-    lineHeight: 26,
-    color: COLORS.gray700,
-  },
-  quizDescription: {
-    fontSize: 14,
-    color: COLORS.gray500,
+
+  // Content Blocks
+  contentHeader: {
     marginBottom: SPACING.lg,
   },
-  quizButton: {
-    marginTop: SPACING.sm,
+  contentHeaderText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.primary,
+    lineHeight: 30,
   },
-  completeButton: {},
-  navigation: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.xl,
+  contentParagraph: {
+    marginBottom: SPACING.lg,
   },
-  navButton: {
+  contentParagraphText: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: COLORS.gray700,
+  },
+  contentList: {
+    marginBottom: SPACING.lg,
+  },
+  listItem: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+    paddingLeft: SPACING.sm,
+  },
+  listBullet: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 7,
+    marginRight: SPACING.md,
+  },
+  listItemText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: COLORS.gray700,
+    flex: 1,
+  },
+  contentBold: {
+    marginBottom: SPACING.md,
+    backgroundColor: `${COLORS.primary}08`,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+  },
+  contentBoldText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.black,
+    lineHeight: 22,
+  },
+  contentDivider: {
+    height: 1,
+    backgroundColor: COLORS.gray200,
+    marginVertical: SPACING.xl,
+  },
+
+  // Empty Content
+  emptyContent: {
     alignItems: 'center',
+    paddingVertical: SPACING.xxxl,
+  },
+  emptyContentText: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    marginTop: SPACING.md,
+    textAlign: 'center',
+  },
+
+  // Quick Actions
+  quickActions: {
+    marginBottom: SPACING.lg,
+  },
+  quizActionCard: {
     backgroundColor: COLORS.white,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
+    overflow: 'hidden',
     ...SHADOWS.small,
   },
-  navButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginHorizontal: SPACING.xs,
+  quizActionInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.lg,
   },
+  quizActionInfo: {
+    flex: 1,
+    marginLeft: SPACING.md,
+  },
+  quizActionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.black,
+    marginBottom: 2,
+  },
+  quizActionDesc: {
+    fontSize: 13,
+    color: COLORS.gray500,
+  },
+
+  // Bottom Action Bar
+  bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    paddingBottom: SPACING.xl,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray200,
+    ...SHADOWS.medium,
+  },
+  markCompleteWrapper: {
+    marginRight: SPACING.sm,
+  },
+  markCompleteButton: {
+    borderRadius: BORDER_RADIUS.lg,
+    overflow: 'hidden',
+  },
+  markCompleteButtonDone: {},
+  markCompleteGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  markCompleteText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.white,
+    marginLeft: SPACING.sm,
+  },
+  checkDoneContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkDoneBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quizButton: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    marginLeft: SPACING.sm,
+  },
+  quizButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+  },
+  quizButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginLeft: SPACING.xs,
+  },
+  backButtonBar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.gray100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: SPACING.sm,
+  },
+
   bottomPadding: {
-    height: 100,
+    height: 20,
   },
 });
 

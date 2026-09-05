@@ -1,29 +1,107 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  Easing,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
-import { SectionHeader, ProgressBar, Tag } from '../components/UIComponents';
+import { GradientButton, Tag, ProgressBar } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const STAGE_COLORS = {
+  1: COLORS.stage1,
+  2: COLORS.stage2,
+  3: COLORS.stage3,
+  4: COLORS.stage4,
+};
+
+const DIFFICULTY_COLORS = {
+  beginner: COLORS.accent,
+  intermediate: COLORS.warning,
+  advanced: COLORS.secondary,
+};
+
+const INSTRUMENT_ICONS = {
+  piano: 'piano',
+  guitar: 'guitar',
+  drums: 'drum',
+  vocals: 'microphone',
+  violin: 'violin',
+  default: 'music',
+};
 
 const CourseScreen = ({ route, navigation }) => {
   const { courseId } = route.params;
   const [course, setCourse] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [progress, setProgress] = useState([]);
+  const [isEnrolled, setIsEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [enrolling, setEnrolling] = useState(false);
+  const [completingLesson, setCompletingLesson] = useState(null);
+
+  const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const cardAnimations = useRef([]);
+  const checkAnimations = useRef({});
 
   useEffect(() => {
-    fetchCourse();
-    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    fetchData();
+    animatePulse();
   }, []);
 
-  const fetchCourse = async () => {
+  useEffect(() => {
+    if (lessons.length > 0) {
+      animateCards();
+    }
+  }, [lessons.length]);
+
+  useEffect(() => {
+    const pct = getProgressPercent();
+    Animated.timing(progressAnim, {
+      toValue: pct,
+      duration: 1200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [progress, lessons.length]);
+
+  const animatePulse = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.08,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  const fetchData = async () => {
     try {
-      const [courseRes, lessonsRes, progressRes] = await Promise.all([
+      const [courseRes, lessonsRes, enrolledRes, progressRes] = await Promise.all([
         authFetch(api.course(courseId)),
         authFetch(api.courseLessons(courseId)),
+        authFetch(api.enrolled),
         authFetch(`${api.progress}?course_id=${courseId}`),
       ]);
 
@@ -31,6 +109,11 @@ const CourseScreen = ({ route, navigation }) => {
       if (lessonsRes.ok) {
         const data = await lessonsRes.json();
         setLessons(Array.isArray(data) ? data : []);
+      }
+      if (enrolledRes.ok) {
+        const data = await enrolledRes.json();
+        const enrolled = Array.isArray(data) ? data : [];
+        setIsEnrolled(enrolled.some((e) => e.course_id === parseInt(courseId)));
       }
       if (progressRes.ok) {
         const data = await progressRes.json();
@@ -40,21 +123,94 @@ const CourseScreen = ({ route, navigation }) => {
       console.error(e);
     } finally {
       setLoading(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
     }
   };
 
-  const getLessonProgress = (lessonId) => {
-    return progress.find(p => p.lesson_id === lessonId && p.completed);
+  const animateCards = () => {
+    cardAnimations.current = lessons.map(() => new Animated.Value(0));
+    const stagger = lessons.map((_, i) =>
+      Animated.timing(cardAnimations.current[i], {
+        toValue: 1,
+        duration: 400,
+        delay: i * 80,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      })
+    );
+    Animated.stagger(80, stagger).start();
   };
 
-  const getCompletedCount = () => {
-    return progress.filter(p => p.completed).length;
-  };
+  const getLessonProgress = (lessonId) =>
+    progress.find((p) => p.lesson_id === lessonId && p.completed);
+
+  const getCompletedCount = () => progress.filter((p) => p.completed).length;
 
   const getProgressPercent = () => {
     if (lessons.length === 0) return 0;
     return getCompletedCount() / lessons.length;
   };
+
+  const getStageColor = () => STAGE_COLORS[course?.stage] || COLORS.primary;
+
+  const handleEnroll = async () => {
+    setEnrolling(true);
+    try {
+      const res = await authFetch(api.enroll(courseId), { method: 'POST' });
+      if (res.ok) {
+        setIsEnrolled(true);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const handleMarkComplete = async (lessonId) => {
+    setCompletingLesson(lessonId);
+    try {
+      const res = await authFetch(api.progressById(lessonId), {
+        method: 'POST',
+        body: JSON.stringify({ completed: true, score: 100 }),
+      });
+      if (res.ok) {
+        checkAnimations.current[lessonId] = new Animated.Value(0);
+        Animated.spring(checkAnimations.current[lessonId], {
+          toValue: 1,
+          tension: 80,
+          friction: 5,
+          useNativeDriver: true,
+        }).start(() => {
+          setProgress((prev) => [...prev, { lesson_id: lessonId, completed: true }]);
+          setCompletingLesson(null);
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      setCompletingLesson(null);
+    }
+  };
+
+  const handleScroll = Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+    useNativeDriver: true,
+  });
+
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, 200],
+    outputRange: [0, -60],
+    extrapolate: 'clamp',
+  });
+
+  const headerScale = scrollY.interpolate({
+    inputRange: [0, 200],
+    outputRange: [1, 0.95],
+    extrapolate: 'clamp',
+  });
 
   if (loading) {
     return (
@@ -64,131 +220,377 @@ const CourseScreen = ({ route, navigation }) => {
     );
   }
 
+  const stageColor = getStageColor();
+  const completedCount = getCompletedCount();
+  const totalCount = lessons.length;
+  const progressPercent = getProgressPercent();
+  const nextLessonIndex = completedCount;
+
+  const renderProgressRing = () => {
+    const size = 100;
+    const strokeWidth = 8;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+
+    const strokeDashoffset = progressAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [circumference, 0],
+    });
+
+    return (
+      <View style={styles.ringContainer}>
+        <View style={[styles.ringTrack, { width: size, height: size, borderRadius: size / 2, borderWidth: strokeWidth }]}>
+          <Animated.View
+            style={[
+              styles.ringFill,
+              {
+                width: size,
+                height: size,
+                borderRadius: size / 2,
+                borderWidth: strokeWidth,
+                borderColor: stageColor,
+                transform: [{ rotate: '-90deg' }],
+              },
+            ]}
+          />
+        </View>
+        <View style={styles.ringCenter}>
+          <Animated.Text style={[styles.ringPercent, { color: stageColor }]}>
+            {Math.round(progressPercent * 100)}%
+          </Animated.Text>
+          <View style={styles.ringLabel}>
+            <View style={[styles.ringLabelText, { color: COLORS.gray500 }]}>
+              {completedCount}/{totalCount}
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderLessonCard = (lesson, index) => {
+    const isCompleted = getLessonProgress(lesson.id);
+    const isCurrent = !isCompleted && index === nextLessonIndex;
+    const isLocked = !isCompleted && !isCurrent;
+    const cardAnim = cardAnimations.current[index] || new Animated.Value(1);
+
+    const slideIn = cardAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-50, 0],
+    });
+
+    const typeIcon =
+      lesson.content_type === 'video'
+        ? 'play-circle'
+        : lesson.content_type === 'quiz'
+        ? 'frequently-asked-questions'
+        : lesson.content_type === 'exercise'
+        ? 'dumbbell'
+        : 'book-open-variant';
+
+    return (
+      <Animated.View
+        key={lesson.id}
+        style={[
+          styles.lessonCard,
+          isCompleted && styles.lessonCardCompleted,
+          isCurrent && styles.lessonCardCurrent,
+          isLocked && styles.lessonCardLocked,
+          {
+            opacity: cardAnim,
+            transform: [{ translateX: slideIn }],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => {
+            if (isLocked) return;
+            navigation.navigate('Lesson', {
+              lessonId: lesson.id,
+              courseId: course?.id,
+              courseName: course?.title,
+            });
+          }}
+          activeOpacity={isLocked ? 1 : 0.8}
+          disabled={isLocked}
+        >
+          <View style={styles.lessonInner}>
+            <View
+              style={[
+                styles.lessonNumberCircle,
+                isCompleted && { backgroundColor: COLORS.success },
+                isCurrent && { backgroundColor: stageColor },
+                isLocked && { backgroundColor: COLORS.gray300 },
+              ]}
+            >
+              {isCompleted ? (
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        scale: checkAnimations.current[lesson.id] || new Animated.Value(1),
+                      },
+                    ],
+                  }}
+                >
+                  <MaterialCommunityIcons name="check" size={20} color={COLORS.white} />
+                </Animated.View>
+              ) : isLocked ? (
+                <MaterialCommunityIcons name="lock" size={16} color={COLORS.gray500} />
+              ) : (
+                <View style={[styles.lessonNumberText, isCurrent && { color: COLORS.white }]}>
+                  {index + 1}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.lessonInfo}>
+              <View
+                style={[
+                  styles.lessonTitleRow,
+                  isLocked && { opacity: 0.5 },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.lessonTitleText,
+                    isCompleted && { color: COLORS.gray500 },
+                    isCurrent && { color: COLORS.black },
+                    isLocked && { color: COLORS.gray400 },
+                  ]}
+                >
+                  {lesson.title}
+                </View>
+                {isCurrent && (
+                  <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                    <View style={[styles.pulsingDot, { backgroundColor: stageColor }]} />
+                  </Animated.View>
+                )}
+              </View>
+
+              <View style={styles.lessonMeta}>
+                <MaterialCommunityIcons
+                  name={typeIcon}
+                  size={14}
+                  color={isLocked ? COLORS.gray400 : COLORS.gray500}
+                />
+                <View
+                  style={[
+                    styles.lessonTypeText,
+                    { color: isLocked ? COLORS.gray400 : COLORS.gray500 },
+                  ]}
+                >
+                  {lesson.content_type || 'Lesson'}
+                </View>
+              </View>
+            </View>
+
+            {isCompleted ? (
+              <MaterialCommunityIcons name="check-circle" size={22} color={COLORS.success} />
+            ) : isCurrent ? (
+              <MaterialCommunityIcons name="chevron-right" size={24} color={stageColor} />
+            ) : (
+              <MaterialCommunityIcons name="lock-outline" size={20} color={COLORS.gray400} />
+            )}
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  const renderEnrollSection = () => {
+    const learnPoints = [
+      'Structured curriculum designed by music experts',
+      'Hands-on exercises and real practice sessions',
+      'Quizzes to test your understanding',
+      'Track your progress at every step',
+    ];
+
+    return (
+      <Animated.View style={[styles.enrollSection, { opacity: fadeAnim }]}>
+        <View style={styles.enrollCard}>
+          <View style={styles.enrollHeader}>
+            <MaterialCommunityIcons name="information-outline" size={24} color={stageColor} />
+            <View style={styles.enrollHeaderText}>
+              <View style={styles.enrollTitle}>Course Overview</View>
+            </View>
+          </View>
+
+          <View style={styles.enrollDescText}>
+            {course?.description || 'Start your musical journey with this comprehensive course.'}
+          </View>
+
+          <View style={styles.learnSection}>
+            <View style={styles.learnTitle}>What you'll learn</View>
+            {learnPoints.map((point, i) => (
+              <View key={i} style={styles.learnItem}>
+                <MaterialCommunityIcons name="check-circle" size={18} color={stageColor} />
+                <View style={styles.learnPointText}>{point}</View>
+              </View>
+            ))}
+          </View>
+
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <GradientButton
+              title={enrolling ? 'Enrolling...' : 'Enroll Now'}
+              onPress={handleEnroll}
+              disabled={enrolling}
+              loading={enrolling}
+              icon="school"
+              colors={[stageColor, COLORS.primaryDark]}
+              style={styles.enrollButton}
+            />
+          </Animated.View>
+        </View>
+      </Animated.View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={[COLORS.primary, COLORS.primaryDark]}
-        style={styles.header}
+      {/* Hero Header */}
+      <Animated.View
+        style={[
+          styles.headerWrapper,
+          {
+            transform: [{ translateY: headerTranslateY }, { scale: headerScale }],
+          },
+        ]}
       >
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
-          </TouchableOpacity>
-          
-          <View style={styles.headerInfo}>
-            <Animated.Text style={styles.courseTitle}>{course?.title || 'Course'}</Animated.Text>
-            <Animated.Text style={styles.courseDesc}>{course?.description}</Animated.Text>
+        <LinearGradient
+          colors={[stageColor, `${stageColor}CC`]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerOverlay} />
+
+          <View style={styles.headerNav}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.white} />
+            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Progress Card */}
-        <View style={styles.progressCard}>
-          <View style={styles.progressHeader}>
-            <Animated.Text style={styles.progressTitle}>Your Progress</Animated.Text>
-            <Animated.Text style={styles.progressPercent}>{Math.round(getProgressPercent() * 100)}%</Animated.Text>
+          <View style={styles.heroContent}>
+            <View style={styles.heroTitleRow}>
+              <MaterialCommunityIcons
+                name={INSTRUMENT_ICONS[course?.instrument] || INSTRUMENT_ICONS.default}
+                size={28}
+                color="rgba(255,255,255,0.9)"
+              />
+              <View style={styles.heroTitleText}>{course?.title || 'Course'}</View>
+            </View>
+
+            <View style={styles.heroDescText}>{course?.description}</View>
+
+            {/* Stats Row */}
+            <View style={styles.statsRow}>
+              {course?.stage && (
+                <Tag
+                  label={`Stage ${course.stage}`}
+                  color={COLORS.white}
+                  size="medium"
+                  style={[styles.statTag, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+                />
+              )}
+              {course?.difficulty && (
+                <Tag
+                  label={course.difficulty.charAt(0).toUpperCase() + course.difficulty.slice(1)}
+                  color={DIFFICULTY_COLORS[course.difficulty] || COLORS.white}
+                  size="medium"
+                  style={[styles.statTag, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+                />
+              )}
+              <View style={styles.statChip}>
+                <MaterialCommunityIcons
+                  name={INSTRUMENT_ICONS[course?.instrument] || INSTRUMENT_ICONS.default}
+                  size={16}
+                  color={COLORS.white}
+                />
+                <View style={styles.statChipText}>
+                  {course?.instrument?.charAt(0).toUpperCase() + (course?.instrument?.slice(1) || '')}
+                </View>
+              </View>
+              <View style={styles.statChip}>
+                <MaterialCommunityIcons name="book-open-variant" size={16} color={COLORS.white} />
+                <View style={styles.statChipText}>{totalCount} lessons</View>
+              </View>
+            </View>
           </View>
-          <ProgressBar 
-            progress={getProgressPercent()} 
-            height={10}
-            color={COLORS.white}
-            backgroundColor="rgba(255,255,255,0.3)"
-          />
-          <Animated.Text style={styles.progressDetail}>
-            {getCompletedCount()} of {lessons.length} lessons completed
-          </Animated.Text>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
+      </Animated.View>
 
-      {/* Lessons List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <SectionHeader 
-          title="Lessons" 
-          subtitle={`${lessons.length} lessons available`}
-        />
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        {/* Progress Section (Enrolled) */}
+        {isEnrolled && (
+          <Animated.View style={[styles.progressSection, { opacity: fadeAnim }]}>
+            <View style={styles.progressCard}>
+              <View style={styles.progressCardHeader}>
+                <View style={styles.progressCardTitle}>Your Progress</View>
+                <View style={[styles.progressCardPercent, { color: stageColor }]}>
+                  {Math.round(progressPercent * 100)}%
+                </View>
+              </View>
 
-        {lessons.map((lesson, index) => {
-          const isCompleted = getLessonProgress(lesson.id);
-          const isNext = !isCompleted && index === getCompletedCount();
-          
-          return (
-            <Animated.View key={lesson.id} style={[styles.lessonCard, { opacity: fadeAnim }]}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Lesson', { 
-                  lessonId: lesson.id, 
-                  courseId: course?.id,
-                  courseName: course?.title 
-                })}
-                activeOpacity={0.9}
-              >
-                <View style={[
-                  styles.lessonContent,
-                  isCompleted && styles.lessonCompleted,
-                  isNext && styles.lessonNext,
-                ]}>
-                  {/* Lesson Number */}
-                  <View style={[
-                    styles.lessonNumber,
-                    isCompleted && styles.lessonNumberCompleted,
-                    isNext && styles.lessonNumberNext,
-                  ]}>
-                    {isCompleted ? (
-                      <MaterialCommunityIcons name="check" size={20} color={COLORS.white} />
-                    ) : (
-                      <Animated.Text style={[
-                        styles.lessonNumberText,
-                        isCompleted && styles.lessonNumberTextCompleted,
-                      ]}>
-                        {index + 1}
-                      </Animated.Text>
-                    )}
+              <View style={styles.progressCardBody}>
+                {renderProgressRing()}
+                <View style={styles.progressDetails}>
+                  <View style={styles.progressLessonsText}>
+                    {completedCount} of {totalCount} lessons complete
                   </View>
-
-                  {/* Lesson Info */}
-                  <View style={styles.lessonInfo}>
-                    <Animated.Text style={[
-                      styles.lessonTitle,
-                      isCompleted && styles.lessonTitleCompleted,
-                    ]}>
-                      {lesson.title}
-                    </Animated.Text>
-                    <Animated.Text style={styles.lessonDesc} numberOfLines={2}>
-                      {lesson.description || 'No description'}
-                    </Animated.Text>
-                    
-                    {/* Tags */}
-                    <View style={styles.lessonTags}>
-                      {lesson.content_type && (
-                        <Tag 
-                          label={lesson.content_type} 
-                          size="small"
-                          variant="light"
-                        />
-                      )}
-                      {isNext && (
-                        <Tag 
-                          label="Next" 
-                          color={COLORS.success}
-                          size="small"
-                        />
-                      )}
-                    </View>
-                  </View>
-
-                  {/* Arrow */}
-                  <MaterialCommunityIcons 
-                    name="chevron-right" 
-                    size={24} 
-                    color={COLORS.gray400} 
+                  <ProgressBar
+                    progress={progressPercent}
+                    height={8}
+                    color={stageColor}
+                    style={styles.progressBar}
                   />
                 </View>
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        })}
+              </View>
+
+              {progressPercent < 1 && (
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                  <GradientButton
+                    title="Continue Learning"
+                    onPress={() => {
+                      const nextLesson = lessons[nextLessonIndex];
+                      if (nextLesson) {
+                        navigation.navigate('Lesson', {
+                          lessonId: nextLesson.id,
+                          courseId: course?.id,
+                          courseName: course?.title,
+                        });
+                      }
+                    }}
+                    icon="play"
+                    colors={[stageColor, COLORS.primaryDark]}
+                    style={styles.continueButton}
+                  />
+                </Animated.View>
+              )}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Lesson List */}
+        <View style={styles.lessonSection}>
+          <View style={styles.lessonSectionHeader}>
+            <View style={styles.lessonSectionTitle}>Lessons</View>
+            <View style={styles.lessonSectionCount}>{totalCount} total</View>
+          </View>
+
+          {lessons.map((lesson, index) => renderLessonCard(lesson, index))}
+        </View>
+
+        {/* Enroll Section (Not Enrolled) */}
+        {!isEnrolled && renderEnrollSection()}
 
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -206,91 +608,197 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+
+  // Hero Header
+  headerWrapper: {
+    zIndex: 10,
+  },
+  headerGradient: {
     paddingTop: 50,
-    paddingBottom: SPACING.xl,
+    paddingBottom: SPACING.xxl,
     borderBottomLeftRadius: BORDER_RADIUS.xxl,
     borderBottomRightRadius: BORDER_RADIUS.xxl,
+    overflow: 'hidden',
   },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  headerNav: {
     paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.lg,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.lg,
   },
-  headerInfo: {
-    flex: 1,
+  heroContent: {
+    paddingHorizontal: SPACING.lg,
   },
-  courseTitle: {
-    fontSize: 24,
+  heroTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  heroTitleText: {
+    fontSize: 26,
     fontWeight: '700',
     color: COLORS.white,
-    marginBottom: SPACING.xs,
+    marginLeft: SPACING.sm,
+    flex: 1,
   },
-  courseDesc: {
+  heroDescText: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
+    lineHeight: 20,
+    marginBottom: SPACING.lg,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  statTag: {
+    borderRadius: BORDER_RADIUS.full,
+  },
+  statChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  statChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.white,
+    marginLeft: SPACING.xs,
+  },
+
+  // Progress Section
+  progressSection: {
+    padding: SPACING.lg,
   },
   progressCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: COLORS.white,
     borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.lg,
-    marginHorizontal: SPACING.lg,
+    padding: SPACING.xl,
+    ...SHADOWS.medium,
   },
-  progressHeader: {
+  progressCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: SPACING.md,
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
   },
-  progressTitle: {
-    fontSize: 14,
-    color: COLORS.white,
-    fontWeight: '600',
+  progressCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.black,
   },
-  progressPercent: {
-    fontSize: 14,
-    color: COLORS.white,
+  progressCardPercent: {
+    fontSize: 20,
     fontWeight: '700',
   },
-  progressDetail: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+  progressCardBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  ringContainer: {
+    width: 100,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.xl,
+  },
+  ringTrack: {
+    position: 'absolute',
+    borderColor: COLORS.gray200,
+  },
+  ringFill: {
+    position: 'absolute',
+  },
+  ringCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ringPercent: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  ringLabel: {
+    marginTop: 2,
+  },
+  ringLabelText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  progressDetails: {
+    flex: 1,
+  },
+  progressLessonsText: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    marginBottom: SPACING.sm,
+    fontWeight: '500',
+  },
+  progressBar: {
+    marginTop: SPACING.xs,
+  },
+  continueButton: {
     marginTop: SPACING.sm,
   },
-  content: {
-    flex: 1,
+
+  // Lesson List
+  lessonSection: {
     padding: SPACING.lg,
+  },
+  lessonSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  lessonSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.black,
+  },
+  lessonSectionCount: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    fontWeight: '500',
   },
   lessonCard: {
     marginBottom: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
-    overflow: 'hidden',
     backgroundColor: COLORS.white,
+    overflow: 'hidden',
     ...SHADOWS.small,
   },
-  lessonContent: {
+  lessonCardCompleted: {
+    backgroundColor: `${COLORS.success}08`,
+  },
+  lessonCardCurrent: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  lessonCardLocked: {
+    backgroundColor: COLORS.gray100,
+    opacity: 0.7,
+  },
+  lessonInner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: SPACING.lg,
   },
-  lessonCompleted: {
-    backgroundColor: COLORS.gray100,
-  },
-  lessonNext: {
-    backgroundColor: `${COLORS.primary}10`,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
-  },
-  lessonNumber: {
+  lessonNumberCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -299,41 +807,95 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: SPACING.lg,
   },
-  lessonNumberCompleted: {
-    backgroundColor: COLORS.success,
-  },
-  lessonNumberNext: {
-    backgroundColor: COLORS.primary,
-  },
   lessonNumberText: {
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.gray600,
   },
-  lessonNumberTextCompleted: {
-    color: COLORS.white,
-  },
   lessonInfo: {
     flex: 1,
   },
-  lessonTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.black,
+  lessonTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: SPACING.xs,
   },
-  lessonTitleCompleted: {
-    color: COLORS.gray500,
+  lessonTitleText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.black,
+    flex: 1,
   },
-  lessonDesc: {
-    fontSize: 13,
-    color: COLORS.gray500,
-    marginBottom: SPACING.sm,
+  pulsingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginLeft: SPACING.sm,
   },
-  lessonTags: {
+  lessonMeta: {
     flexDirection: 'row',
-    gap: SPACING.xs,
+    alignItems: 'center',
   },
+  lessonTypeText: {
+    fontSize: 12,
+    marginLeft: SPACING.xs,
+    fontWeight: '500',
+  },
+
+  // Enroll Section
+  enrollSection: {
+    padding: SPACING.lg,
+  },
+  enrollCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    ...SHADOWS.medium,
+  },
+  enrollHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  enrollHeaderText: {
+    marginLeft: SPACING.sm,
+  },
+  enrollTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.black,
+  },
+  enrollDescText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: COLORS.gray600,
+    marginBottom: SPACING.xl,
+  },
+  learnSection: {
+    marginBottom: SPACING.xl,
+  },
+  learnTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: SPACING.md,
+  },
+  learnItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  learnPointText: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    marginLeft: SPACING.sm,
+    flex: 1,
+    lineHeight: 20,
+  },
+  enrollButton: {
+    marginTop: SPACING.sm,
+  },
+
   bottomPadding: {
     height: 100,
   },
