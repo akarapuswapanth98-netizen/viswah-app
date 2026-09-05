@@ -37,6 +37,7 @@ class Course(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     lessons = relationship("Lesson", back_populates="course")
+    user_courses = relationship("UserCourse", back_populates="course")
 
 
 class Lesson(Base):
@@ -61,7 +62,7 @@ class Progress(Base):
     __tablename__ = "progress"
     __table_args__ = (
         UniqueConstraint('user_id', 'lesson_id', name='uq_progress_user_lesson'),
-        CheckConstraint("completed IN (0, 1)", name='ck_progress_completed'),
+        CheckConstraint("completed IN (0, 1) OR completed IN ('true', 'false')", name='ck_progress_completed'),
     )
 
     id = Column(Integer, primary_key=True, index=True)

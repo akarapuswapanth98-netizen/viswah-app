@@ -83,10 +83,10 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchData();
-    startWaveAnimations();
+    const waves = startWaveAnimations();
     startStaggeredEntrance();
     return () => {
-      waveAnimRefs.current.forEach((anim) => {
+      waves.forEach((anim) => {
         if (anim) anim.stop();
       });
     };
@@ -152,6 +152,7 @@ const HomeScreen = ({ navigation }) => {
       loopAnim.start();
       return loopAnim;
     });
+    return waveAnimRefs.current;
   };
 
   const onRefresh = useCallback(async () => {

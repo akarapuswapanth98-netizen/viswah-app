@@ -48,7 +48,6 @@ const DrumsScreen = ({ navigation }) => {
   const [bpm, setBpm] = useState(120);
   const [currentStep, setCurrentStep] = useState(-1);
   const [selectedPattern, setSelectedPattern] = useState(null);
-  const [flashPad, setFlashPad] = useState(null);
 
   const audioContext = useRef(null);
   const padAnimations = useRef({});
@@ -201,7 +200,6 @@ const DrumsScreen = ({ navigation }) => {
       }
 
       setActiveDrum(drum.id);
-      setFlashPad(drum.id);
 
       if (!padAnimations.current[drum.id]) {
         padAnimations.current[drum.id] = new Animated.Value(1);
@@ -244,7 +242,6 @@ const DrumsScreen = ({ navigation }) => {
 
       setTimeout(() => {
         setActiveDrum(null);
-        setFlashPad(null);
       }, 150);
     } catch (e) {
       console.error('Error playing drum:', e);

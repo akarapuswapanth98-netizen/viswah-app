@@ -364,21 +364,14 @@ const LessonScreen = ({ route, navigation }) => {
               size={20}
               color={isCompleted ? COLORS.success : COLORS.primary}
             />
-            <View
+            <Text
               style={[
                 styles.statusBannerText,
                 { color: isCompleted ? COLORS.success : COLORS.primary },
               ]}
             >
-              <Text
-                style={[
-                  styles.statusBannerText,
-                  { color: isCompleted ? COLORS.success : COLORS.primary },
-                ]}
-              >
-                {isCompleted ? 'Lesson Completed' : 'In Progress'}
-              </Text>
-            </View>
+              {isCompleted ? 'Lesson Completed' : 'In Progress'}
+            </Text>
             {isCompleted && progress?.score && (
               <View style={styles.scoreInline}>
                 <MaterialCommunityIcons name="star" size={14} color={COLORS.warning} />

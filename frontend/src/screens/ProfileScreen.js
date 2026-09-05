@@ -114,7 +114,7 @@ const ProfileScreen = ({ navigation }) => {
     try {
       const [profileRes, coursesRes] = await Promise.all([
         authFetch(api.me),
-        authFetch(`${api.progress}/user`),
+        authFetch(api.enrolled),
       ]);
 
       if (profileRes.ok) setUser(await profileRes.json());

@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from typing import List
 import os
+import atexit
 
 from models.schemas import ErrorResponse
 from services.vocal_guru import (
@@ -16,6 +17,20 @@ router = APIRouter(
     prefix="/api/vocal-guru",
     tags=["Vocal Guru"]
 )
+
+# Fix #3: Track and clean up generated temp audio files
+_generated_audio_files: List[str] = []
+
+def _cleanup_audio_files():
+    for path in _generated_audio_files:
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+        except OSError:
+            pass
+    _generated_audio_files.clear()
+
+atexit.register(_cleanup_audio_files)
 
 
 @router.get(
@@ -97,6 +112,13 @@ def teach_topic(topic: str, guru_id: str = "classical"):
     return result
 
 
+from pydantic import BaseModel, Field
+
+class SpeakRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=5000)
+    guru_id: str = Field(default="classical")
+
+
 @router.post(
     "/speak",
     response_model=dict,
@@ -104,16 +126,12 @@ def teach_topic(topic: str, guru_id: str = "classical"):
         400: {"model": ErrorResponse, "description": "TTS not available"}
     }
 )
-def speak_text(request: dict):
+def speak_text(request: SpeakRequest):
     """Generate speech audio from text"""
-    text = request.get("text", "")
-    guru_id = request.get("guru_id", "classical")
+    text = request.text
+    guru_id = request.guru_id
     if not text:
         raise HTTPException(status_code=400, detail="Text is required")
-
-    # Fix #11: Validate text length and guru_id
-    if len(text) > 5000:
-        raise HTTPException(status_code=400, detail="Text too long. Maximum 5000 characters allowed.")
 
     valid_guru_ids = ["classical", "contemporary", "carnatic"]
     if guru_id not in valid_guru_ids:

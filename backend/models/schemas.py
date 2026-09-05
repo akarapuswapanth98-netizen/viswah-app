@@ -19,6 +19,18 @@ class InstrumentType(str, Enum):
     vocal = "vocal"
     piano = "piano"
     drums = "drums"
+    guitar = "guitar"
+    violin = "violin"
+    flute = "flute"
+    trumpet = "trumpet"
+    saxophone = "saxophone"
+    cello = "cello"
+    ukulele = "ukulele"
+    keyboard = "keyboard"
+    bass = "bass"
+    harmonica = "harmonica"
+    clarinet = "clarinet"
+    percussion = "percussion"
 
 
 class LessonType(str, Enum):

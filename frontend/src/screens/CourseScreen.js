@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -348,31 +348,22 @@ const CourseScreen = ({ route, navigation }) => {
             </View>
 
             <View style={styles.lessonInfo}>
-              <View
+            <View
+              style={[
+                styles.lessonTitleRow,
+                isLocked && { opacity: 0.5 },
+              ]}
+            >
+              <Text
                 style={[
-                  styles.lessonTitleRow,
-                  isLocked && { opacity: 0.5 },
+                  styles.lessonTitleText,
+                  isCompleted && { color: COLORS.gray500 },
+                  isCurrent && { color: COLORS.black },
+                  isLocked && { color: COLORS.gray400 },
                 ]}
               >
-                <View
-                  style={[
-                    styles.lessonTitleText,
-                    isCompleted && { color: COLORS.gray500 },
-                    isCurrent && { color: COLORS.black },
-                    isLocked && { color: COLORS.gray400 },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.lessonTitleText,
-                      isCompleted && { color: COLORS.gray500 },
-                      isCurrent && { color: COLORS.black },
-                      isLocked && { color: COLORS.gray400 },
-                    ]}
-                  >
-                    {lesson.title}
-                  </Text>
-                </View>
+                {lesson.title}
+              </Text>
                 {isCurrent && (
                   <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                     <View style={[styles.pulsingDot, { backgroundColor: stageColor }]} />
@@ -386,21 +377,14 @@ const CourseScreen = ({ route, navigation }) => {
                   size={14}
                   color={isLocked ? COLORS.gray400 : COLORS.gray500}
                 />
-                <View
+                <Text
                   style={[
                     styles.lessonTypeText,
                     { color: isLocked ? COLORS.gray400 : COLORS.gray500 },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.lessonTypeText,
-                      { color: isLocked ? COLORS.gray400 : COLORS.gray500 },
-                    ]}
-                  >
-                    {lesson.content_type || 'Lesson'}
-                  </Text>
-                </View>
+                  {lesson.content_type || 'Lesson'}
+                </Text>
               </View>
             </View>
 

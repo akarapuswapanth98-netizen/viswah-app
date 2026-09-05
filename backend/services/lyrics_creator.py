@@ -18,7 +18,7 @@ client = None
 try:
     import openai
     _openai_key = os.getenv("OPENAI_API_KEY", "")
-    if _openai_key and _openai_key != "your-openai-api-key-here" and len(_openai_key) > 10:
+    if _openai_key and _openai_key != "your-openai-api-key-here" and len(_openai_key) >= 20:
         client = openai.OpenAI(api_key=_openai_key)
         OPENAI_AVAILABLE = True
 except ImportError:
@@ -392,7 +392,6 @@ def format_lyrics(lyrics_data: Dict, format_type: str = "text") -> str:
         return "\n".join(lines)
 
     elif format_type == "lrc":
-        """LRC format for synchronized lyrics"""
         lines = []
         time = 0
         for section in lyrics_data.get("lyrics", []):

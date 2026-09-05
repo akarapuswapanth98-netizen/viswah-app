@@ -1,13 +1,10 @@
 # Speech Analysis Routes
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 import json
 import struct
-import tempfile
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -160,7 +157,6 @@ async def upload_audio(file: UploadFile = File(...)):
             num_channels = struct.unpack_from('<H', contents, 22)[0]
             sample_rate = struct.unpack_from('<I', contents, 24)[0]
             bits_per_sample = struct.unpack_from('<H', contents, 34)[0]
-            byte_rate = struct.unpack_from('<I', contents, 28)[0]
 
             if sample_rate < 8000 or sample_rate > 48000:
                 raise HTTPException(status_code=400, detail="Unsupported sample rate")
@@ -179,11 +175,28 @@ async def upload_audio(file: UploadFile = File(...)):
 
             pcm_data = contents[data_offset:data_offset + chunk_size]
 
+            if num_channels > 1:
+                # Fix #7: Downmix stereo to mono by averaging channels
+                bytes_per_sample = bits_per_sample // 8
+                frame_size = bytes_per_sample * num_channels
+                num_frames = len(pcm_data) // frame_size
+                mono_data = bytearray()
+                for i in range(num_frames):
+                    frame_start = i * frame_size
+                    if bits_per_sample == 16:
+                        samples = struct.unpack_from(f'<{num_channels}h', pcm_data, frame_start)
+                        mono_data.extend(struct.pack('<h', sum(samples) // num_channels))
+                    elif bits_per_sample == 32:
+                        samples = struct.unpack_from(f'<{num_channels}f', pcm_data, frame_start)
+                        mono_data.extend(struct.pack('<f', sum(samples) / num_channels))
+                pcm_data = bytes(mono_data)
+                num_channels = 1
+
             if bits_per_sample == 16:
                 num_samples = len(pcm_data) // 2
                 raw_samples = struct.unpack(f'<{num_samples}h', pcm_data)
                 audio_data = [s / 32768.0 for s in raw_samples]
-            elif bits_per_sample == 32 and b'flt' in contents[8:12]:
+            elif bits_per_sample == 32 and sample_rate > 0:
                 num_samples = len(pcm_data) // 4
                 audio_data = list(struct.unpack(f'{num_samples}f', pcm_data))
             else:

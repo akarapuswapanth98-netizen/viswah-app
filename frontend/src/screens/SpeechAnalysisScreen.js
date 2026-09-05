@@ -87,7 +87,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
   const [results, setResults] = useState(null);
   const [noteDots, setNoteDots] = useState([]);
   const [noteDotAnimations, setNoteDotAnimations] = useState([]);
-  const [scoreRingAnim] = useState(new Animated.Value(0));
+  const scoreRingAnim = useRef(new Animated.Value(0)).current;
   const [resultSlideAnims, setResultSlideAnims] = useState([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -100,6 +100,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
   const volumeIntervalRef = useRef(null);
 
   const currentNoteIndexRef = useRef(0);
+  const stoppingRef = useRef(false);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
@@ -195,7 +196,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
     }, 150);
 
     noteAdvanceRef.current = setInterval(() => {
-      if (!isRecordingRef.current) return;
+      if (!isRecordingRef.current || stoppingRef.current) return;
       setCurrentNoteIndex((prev) => {
         currentNoteIndexRef.current = prev;
         if (prev < selectedExercise.notes.length - 1) {
@@ -221,7 +222,8 @@ const SpeechAnalysisScreen = ({ navigation }) => {
   };
 
   const handleStopRecording = async () => {
-    if (!isRecordingRef.current) return;
+    if (!isRecordingRef.current || stoppingRef.current) return;
+    stoppingRef.current = true;
     setIsRecording(false);
     isRecordingRef.current = false;
     stopPulse();
@@ -263,6 +265,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
       animateScoreRing(fallback.score);
       animateResultCards(fallback.note_details.length);
     }
+    stoppingRef.current = false;
   };
 
   const generateFallbackResults = () => {

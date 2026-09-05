@@ -35,9 +35,13 @@ try:
     import elevenlabs
     ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
     if ELEVENLABS_API_KEY and len(ELEVENLABS_API_KEY) > 10:
-        elevenlabs.set_api_key(ELEVENLABS_API_KEY)
+        try:
+            elevenlabs.set_api_key(ELEVENLABS_API_KEY)
+        except AttributeError:
+            # Newer versions use ElevenLabs(api_key=...) instead
+            pass
         ELEVENLABS_AVAILABLE = True
-except (ImportError, AttributeError, Exception) as e:
+except (ImportError, Exception) as e:
     logger.info(f"ElevenLabs not available: {e}")
 
 try:

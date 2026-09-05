@@ -4,11 +4,10 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  FlatList,
-  TouchableOpacity,
   Text,
   StatusBar,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -411,7 +410,7 @@ const MusicalStaff = ({ progress }) => {
         ]).start();
       });
     }
-  }, [progress > 0.2]);
+  }, [progress]);
 
   const notePositions = [
     { left: 40, top: 15, color: '#6C63FF' },
@@ -472,7 +471,7 @@ const BouncingAvatar = ({ progress }) => {
         ])
       ).start();
     }
-  }, [progress > 0.2]);
+  }, [progress]);
 
   return (
     <Animated.View
@@ -507,7 +506,7 @@ const ProgressRing = ({ progress }) => {
         useNativeDriver: true,
       }).start();
     }
-  }, [progress > 0.2]);
+  }, [progress]);
 
   const circumference = 2 * Math.PI * 44;
   const strokeDashoffset = fillProgress.interpolate({

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   ScrollView,
   TextInput,
@@ -130,7 +131,7 @@ const LyricsCreatorScreen = ({ navigation }) => {
     try {
       await authFetch(api.lyricsAnalyze, {
         method: 'POST',
-        body: JSON.stringify({ lyrics, topic, style: selectedStyle }),
+        body: JSON.stringify({ lyrics: lyrics.trim() }),
       });
     } catch (e) {
       console.error('Save error:', e);
@@ -323,10 +324,6 @@ const LyricsCreatorScreen = ({ navigation }) => {
     </View>
   );
 };
-
-const Text = ({ style, children, ...props }) => (
-  <Animated.Text style={style} {...props}>{children}</Animated.Text>
-);
 
 const styles = StyleSheet.create({
   container: {

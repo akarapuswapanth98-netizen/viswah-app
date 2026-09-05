@@ -16,7 +16,9 @@ from seed_data import seed_database
 
 load_dotenv()
 
-# Fix #1: Only run SQLite PRAGMA on SQLite dialects
+# Fix #1: Always create tables first, then run SQLite PRAGMA migration
+Base.metadata.create_all(bind=engine)
+
 if engine.url.drivername == "sqlite":
     try:
         with engine.connect() as conn:
@@ -31,8 +33,6 @@ if engine.url.drivername == "sqlite":
                     pass  # Column may already exist from concurrent startup
     except Exception as e:
         logger.warning(f"SQLite migration check failed: {e}")
-else:
-    Base.metadata.create_all(bind=engine)
 
 # Fix #3: Wrap seed in try/except so failure doesn't kill the app
 try:

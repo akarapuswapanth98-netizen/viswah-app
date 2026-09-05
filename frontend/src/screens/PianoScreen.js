@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
-  PanResponder,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -82,7 +81,6 @@ const PianoScreen = ({ navigation }) => {
   const [tempo, setTempo] = useState(120);
   const [currentOctave, setCurrentOctave] = useState(4);
   const [pressedKeys, setPressedKeys] = useState({});
-  const [volumeLevel, setVolumeLevel] = useState(0);
 
   const audioContext = useRef(null);
   const activeOscillators = useRef({});

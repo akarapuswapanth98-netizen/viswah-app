@@ -344,11 +344,10 @@ const QuizScreen = ({ route, navigation }) => {
 
   const saveScore = async () => {
     try {
-      const finalScore = [...answers].length;
       const percentage = Math.round((score / quiz.questions.length) * 100);
-      await authFetch(`${api.progress}/${courseId}/${lessonId}`, {
+      await authFetch(api.progress, {
         method: 'POST',
-        body: JSON.stringify({ completed: true, score: percentage }),
+        body: JSON.stringify({ lesson_id: parseInt(lessonId), completed: true, score: percentage }),
       });
     } catch (e) {
       console.error(e);
