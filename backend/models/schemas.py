@@ -83,6 +83,7 @@ class LessonResponse(BaseModel):
     order: int
     lesson_type: LessonType
     duration_minutes: int = Field(..., ge=1)
+    quiz_questions: Optional[List[dict]] = None
 
     class Config:
         from_attributes = True

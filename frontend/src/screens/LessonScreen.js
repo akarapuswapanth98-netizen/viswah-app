@@ -73,7 +73,7 @@ const LessonScreen = ({ route, navigation }) => {
       <ScrollView style={styles.content}>
         <Card style={styles.card}>
           <Card.Content>
-            {lesson?.content?.split('\n').map((line, i) => {
+            {lesson?.content?.split('\n')?.map((line, i) => {
               if (line.startsWith('# ')) return <Title key={i} style={styles.h1}>{line.slice(2)}</Title>;
               if (line.startsWith('## ')) return <Title key={i} style={styles.h2}>{line.slice(3)}</Title>;
               if (line.startsWith('- ')) return <View key={i} style={styles.list}><Paragraph>• {line.slice(2)}</Paragraph></View>;

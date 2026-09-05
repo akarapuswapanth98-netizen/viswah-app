@@ -94,14 +94,17 @@ def create_progress(
     ).first()
 
     if existing:
-        existing.completed = progress.completed
-        existing.score = progress.score
-        existing.time_spent_minutes = progress.time_spent_minutes
-        # Fix #9: Set completed_at when completed, clear when uncompleted
-        if progress.completed and not existing.completed_at:
-            existing.completed_at = datetime.now(timezone.utc)
-        elif not progress.completed:
-            existing.completed_at = None
+        # Only update if new values are better or completing
+        if progress.completed:
+            existing.completed = True
+            existing.score = max(existing.score, progress.score)
+            existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
+            if not existing.completed_at:
+                existing.completed_at = datetime.now(timezone.utc)
+        elif not existing.completed:
+            # Only update if not already completed
+            existing.score = progress.score
+            existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
         db.commit()
         db.refresh(existing)
         return existing

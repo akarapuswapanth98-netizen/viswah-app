@@ -140,6 +140,8 @@ def generate_speech(text: str, guru_id: str = "classical") -> Optional[str]:
     """
     guru = GURU_PERSONAS.get(guru_id, GURU_PERSONAS["classical"])
     timestamp = int(time.time() * 1000)
+    # Sanitize guru_id for safe filename
+    safe_id = ''.join(c for c in guru_id if c.isalnum() or c in ('-', '_'))[:50]
 
     # Try ElevenLabs first
     if ELEVENLABS_AVAILABLE:
@@ -151,7 +153,7 @@ def generate_speech(text: str, guru_id: str = "classical") -> Optional[str]:
             )
             # Save to temp file with unique name
             temp_dir = tempfile.gettempdir()
-            audio_path = os.path.join(temp_dir, f"guru_{guru_id}_{timestamp}.mp3")
+            audio_path = os.path.join(temp_dir, f"guru_{safe_id}_{timestamp}.mp3")
             with open(audio_path, "wb") as f:
                 f.write(audio)
             return audio_path
@@ -163,7 +165,7 @@ def generate_speech(text: str, guru_id: str = "classical") -> Optional[str]:
         try:
             tts = gTTS(text=text, lang='en')
             temp_dir = tempfile.gettempdir()
-            audio_path = os.path.join(temp_dir, f"guru_{guru_id}_{timestamp}.mp3")
+            audio_path = os.path.join(temp_dir, f"guru_{safe_id}_{timestamp}.mp3")
             tts.save(audio_path)
             return audio_path
         except Exception as e:

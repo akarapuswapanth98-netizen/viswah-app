@@ -44,6 +44,7 @@ class Lesson(Base):
     order = Column(Integer)
     lesson_type = Column(String(20))
     duration_minutes = Column(Integer)
+    quiz_questions = Column(Text, nullable=True)  # JSON string
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     course = relationship("Course", back_populates="lessons")
