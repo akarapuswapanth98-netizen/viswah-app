@@ -13,8 +13,14 @@ const SpeechAnalysisScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [recordingTime, setRecordingTime] = useState(0);
   const timerRef = useRef(null);
+  const isRecordingRef = useRef(false);
 
   useEffect(() => { fetchExercises(); }, []);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   const fetchExercises = async () => {
     try {
@@ -33,25 +39,25 @@ const SpeechAnalysisScreen = ({ navigation }) => {
 
   const startRecording = async () => {
     setIsRecording(true);
+    isRecordingRef.current = true;
     setRecordingTime(0);
     setAnalysis(null);
     setRealtimePitch(null);
 
     timerRef.current = setInterval(() => {
       setRecordingTime(prev => prev + 1);
-      // Simulate real-time pitch detection
       const fakeNotes = ['C4', 'D4', 'E4', 'F4', 'G4'];
       setRealtimePitch(fakeNotes[Math.floor(Math.random() * fakeNotes.length)]);
     }, 1000);
 
-    // Auto-stop after exercise duration
     setTimeout(() => {
-      if (isRecording) stopRecording();
+      if (isRecordingRef.current) stopRecording();
     }, 15000);
   };
 
   const stopRecording = () => {
     setIsRecording(false);
+    isRecordingRef.current = false;
     clearInterval(timerRef.current);
     setRealtimePitch(null);
 
@@ -101,6 +107,9 @@ const SpeechAnalysisScreen = ({ navigation }) => {
                   <Paragraph style={styles.pitchLabel}>Detected Pitch</Paragraph>
                 </View>
               )}
+              <Button mode="contained" icon="stop" onPress={stopRecording} style={styles.stopBtn}>
+                Stop Recording
+              </Button>
             </Card.Content>
           </Card>
         )}
@@ -192,6 +201,7 @@ const styles = StyleSheet.create({
   pitchDisplay: { marginTop: 16, alignItems: 'center' },
   pitchNote: { fontSize: 48, color: '#6200EE' },
   pitchLabel: { color: '#666' },
+  stopBtn: { marginTop: 16, backgroundColor: '#F44336' },
   exerciseCard: { marginBottom: 12, elevation: 2 },
   exerciseSelected: { borderColor: '#6200EE', borderWidth: 2 },
   exerciseHeader: { flexDirection: 'row', alignItems: 'center' },
