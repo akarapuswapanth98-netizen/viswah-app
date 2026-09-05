@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,7 +21,7 @@ const LessonScreen = ({ route, navigation }) => {
   const fetchLesson = async () => {
     try {
       const [lessonRes, progressRes] = await Promise.all([
-        authFetch(`${api.lessons}/${lessonId}`),
+        authFetch(api.lesson(lessonId)),
         authFetch(`${api.progress}/${courseId}/${lessonId}`),
       ]);
 
@@ -180,8 +180,6 @@ const LessonScreen = ({ route, navigation }) => {
     </View>
   );
 };
-
-import { useRef } from 'react';
 
 const styles = StyleSheet.create({
   container: {

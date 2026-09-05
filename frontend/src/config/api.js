@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LOCALHOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-export const API_URL = `http://${LOCALHOST}:8000`;
+export const API_URL = `http://${LOCALHOST}:8003`;
 
 export const api = {
   register: `${API_URL}/api/auth/register`,

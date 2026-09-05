@@ -36,7 +36,7 @@ const QuizScreen = ({ route, navigation }) => {
 
   const fetchQuiz = async () => {
     try {
-      const res = await authFetch(`${api.lessons}/${lessonId}`);
+      const res = await authFetch(api.lesson(lessonId));
       if (res.ok) {
         const data = await res.json();
         // Parse quiz questions from lesson content

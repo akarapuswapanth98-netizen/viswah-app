@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
 import { GradientButton } from '../components/UIComponents';
+import { api, authFetch, setAuthToken } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen = ({ navigation }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -47,10 +49,9 @@ const LoginScreen = ({ navigation }) => {
     setError('');
     
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const res = await fetch(`http://localhost:8003${endpoint}`, {
+      const endpoint = isLogin ? api.login : api.register;
+      const res = await authFetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
       
@@ -62,7 +63,7 @@ const LoginScreen = ({ navigation }) => {
       
       // Store token
       if (data.access_token) {
-        await AsyncStorage.setItem('authToken', data.access_token);
+        await setAuthToken(data.access_token);
         navigation.replace('Home');
       }
     } catch (e) {
@@ -182,8 +183,6 @@ const LoginScreen = ({ navigation }) => {
     </KeyboardAvoidingView>
   );
 };
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const styles = StyleSheet.create({
   container: {

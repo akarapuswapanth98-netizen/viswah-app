@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,7 +20,7 @@ const ProfileScreen = ({ navigation }) => {
   const fetchUserData = async () => {
     try {
       const [profileRes, coursesRes] = await Promise.all([
-        authFetch(`${api.profile || '/api/auth/me'}`),
+        authFetch(api.me),
         authFetch(`${api.progress}/user`),
       ]);
 
@@ -213,8 +213,6 @@ const ProfileScreen = ({ navigation }) => {
     </View>
   );
 };
-
-import { useRef } from 'react';
 
 const styles = StyleSheet.create({
   container: {

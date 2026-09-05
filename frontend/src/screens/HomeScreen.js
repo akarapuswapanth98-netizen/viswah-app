@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -204,8 +204,6 @@ const HomeScreen = ({ navigation }) => {
     </View>
   );
 };
-
-import { useRef } from 'react';
 
 const styles = StyleSheet.create({
   container: {

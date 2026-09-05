@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,7 +21,7 @@ const VocalGuruScreen = ({ navigation }) => {
 
   const fetchGurus = async () => {
     try {
-      const res = await authFetch(api.vocalGuru);
+      const res = await authFetch(api.vocalGurus);
       if (res.ok) {
         const data = await res.json();
         setGurus(Array.isArray(data) ? data : []);
@@ -42,7 +42,7 @@ const VocalGuruScreen = ({ navigation }) => {
     if (!selectedGuru) return;
     
     try {
-      const res = await authFetch(`${api.vocalGuru}/greet/${selectedGuru.id}`);
+      const res = await authFetch(api.vocalGuruGreet(selectedGuru.id));
       if (res.ok) {
         const data = await res.json();
         setCurrentLesson({
@@ -59,7 +59,7 @@ const VocalGuruScreen = ({ navigation }) => {
   const handleSpeak = async (text) => {
     try {
       setSpeaking(true);
-      const res = await authFetch(`${api.vocalGuru}/speak`, {
+      const res = await authFetch(api.vocalGuruSpeak, {
         method: 'POST',
         body: JSON.stringify({ text }),
       });
@@ -218,8 +218,6 @@ const VocalGuruScreen = ({ navigation }) => {
     </View>
   );
 };
-
-import { useRef } from 'react';
 
 const styles = StyleSheet.create({
   container: {

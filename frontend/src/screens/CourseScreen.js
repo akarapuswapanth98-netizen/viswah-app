@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -22,8 +22,8 @@ const CourseScreen = ({ route, navigation }) => {
   const fetchCourse = async () => {
     try {
       const [courseRes, lessonsRes, progressRes] = await Promise.all([
-        authFetch(`${api.courses}/${courseId}`),
-        authFetch(`${api.courses}/${courseId}/lessons`),
+        authFetch(api.course(courseId)),
+        authFetch(api.courseLessons(courseId)),
         authFetch(`${api.progress}?course_id=${courseId}`),
       ]);
 
@@ -195,8 +195,6 @@ const CourseScreen = ({ route, navigation }) => {
     </View>
   );
 };
-
-import { useRef } from 'react';
 
 const styles = StyleSheet.create({
   container: {
