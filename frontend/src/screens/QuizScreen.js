@@ -71,7 +71,7 @@ const QuizScreen = ({ route, navigation }) => {
     }
   };
 
-  const retry = () => { setCurrentQ(0); setAnswers({}); setShowResults(false); setScore(0); };
+  const retry = () => { setCurrentQ(0); setAnswers({}); setShowResults(false); setScore(0); startTime.current = Date.now(); };
 
   if (loading) return <View style={styles.loading}><Paragraph>Loading...</Paragraph></View>;
 
