@@ -105,8 +105,11 @@ const ProfileScreen = ({ navigation }) => {
         <Title style={styles.sectionTitle}>Account</Title>
         <Card style={styles.settings}>
           <Card.Content>
-            <Button mode="text" icon="login" onPress={() => navigation.navigate('Login')} style={styles.btn}>Login / Register</Button>
-            <Button mode="text" icon="logout" onPress={handleLogout} style={styles.btn}>Logout</Button>
+            {user?.email === 'Not logged in' ? (
+              <Button mode="text" icon="login" onPress={() => navigation.navigate('Login')} style={styles.btn}>Login / Register</Button>
+            ) : (
+              <Button mode="text" icon="logout" onPress={handleLogout} style={styles.btn}>Logout</Button>
+            )}
           </Card.Content>
         </Card>
       </ScrollView>

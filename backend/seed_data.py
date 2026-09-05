@@ -147,6 +147,42 @@ def seed_database(db: Session):
             duration_minutes=15
         ),
 
+        # Intermediate Vocal Lessons
+        Lesson(
+            course_id=courses[2].id,
+            title="Vibrato Techniques",
+            content="# Vibrato Techniques\n\nLearn to add warmth to your voice...",
+            order=1,
+            lesson_type="theory",
+            duration_minutes=15
+        ),
+        Lesson(
+            course_id=courses[2].id,
+            title="Dynamic Control",
+            content="# Dynamic Control\n\nMaster volume and intensity...",
+            order=2,
+            lesson_type="practice",
+            duration_minutes=20
+        ),
+
+        # Intermediate Piano Lessons
+        Lesson(
+            course_id=courses[4].id,
+            title="Chord Progressions",
+            content="# Chord Progressions\n\nLearn common chord sequences...",
+            order=1,
+            lesson_type="theory",
+            duration_minutes=15
+        ),
+        Lesson(
+            course_id=courses[4].id,
+            title="Scale Runs",
+            content="# Scale Runs\n\nPractice smooth scale passages...",
+            order=2,
+            lesson_type="practice",
+            duration_minutes=20
+        ),
+
         # Drum Lessons
         Lesson(
             course_id=courses[5].id,

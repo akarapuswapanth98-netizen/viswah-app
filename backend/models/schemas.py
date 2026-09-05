@@ -88,13 +88,6 @@ class LessonResponse(BaseModel):
         from_attributes = True
 
 
-class LessonContent(BaseModel):
-    title: str
-    content: str
-    audio_url: Optional[str] = None
-    quiz_questions: Optional[List[dict]] = None
-
-
 # ============ Progress Schemas ============
 
 class ProgressResponse(BaseModel):
@@ -104,6 +97,7 @@ class ProgressResponse(BaseModel):
     completed: bool
     score: float
     time_spent_minutes: int
+    completed_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -160,8 +154,8 @@ class QuizQuestion(BaseModel):
 class LessonGenerateResponse(BaseModel):
     title: str
     content: str
-    quiz_questions: List[QuizQuestion] = Field(..., min_length=1)
-    tips: List[str] = Field(..., min_length=1)
+    quiz_questions: List[QuizQuestion] = Field(default=[], min_length=0)
+    tips: List[str] = Field(default=[], min_length=0)
 
 
 class ExerciseGenerateRequest(BaseModel):
@@ -172,7 +166,7 @@ class ExerciseGenerateRequest(BaseModel):
 class ExerciseResponse(BaseModel):
     exercise_name: str
     instructions: List[str] = Field(..., min_length=1)
-    duration: str = Field(..., min_length=1, pattern=r"^\d+\s*(min|minutes|hour|hours|sec|seconds)$")
+    duration: str = Field(..., min_length=1, pattern=r"^\d+\s*(min|minutes|mins|hour|hours|hrs|sec|seconds|s)$")
     success_criteria: str = Field(..., min_length=1)
 
 

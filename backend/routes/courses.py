@@ -97,9 +97,11 @@ def create_progress(
         existing.completed = progress.completed
         existing.score = progress.score
         existing.time_spent_minutes = progress.time_spent_minutes
-        # Fix #9: Set completed_at when completed
+        # Fix #9: Set completed_at when completed, clear when uncompleted
         if progress.completed and not existing.completed_at:
             existing.completed_at = datetime.now(timezone.utc)
+        elif not progress.completed:
+            existing.completed_at = None
         db.commit()
         db.refresh(existing)
         return existing

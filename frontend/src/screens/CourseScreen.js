@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api, authFetch, getAuthToken } from '../config/api';
 
 const CourseScreen = ({ route, navigation }) => {
-  const { courseId } = route.params;
+  const { courseId } = route.params || {};
   const [course, setCourse] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [progress, setProgress] = useState(0);
@@ -22,10 +22,11 @@ const CourseScreen = ({ route, navigation }) => {
         authFetch(api.course(courseId)),
         authFetch(api.courseLessons(courseId)),
       ]);
+      if (!cRes.ok || !lRes.ok) throw new Error('Failed to fetch');
       const courseData = await cRes.json();
       const lessonsData = await lRes.json();
       setCourse(courseData);
-      setLessons(lessonsData);
+      setLessons(Array.isArray(lessonsData) ? lessonsData : []);
 
       // Check enrollment and progress
       const token = await getAuthToken();

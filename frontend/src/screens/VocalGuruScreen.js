@@ -15,19 +15,22 @@ const VocalGuruScreen = ({ navigation }) => {
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
+    const fallbackGurus = [
+      { id: 'classical', name: 'Pandit Ravi', description: 'Classical music maestro', specialties: ['raga', 'tal', 'classical scales'] },
+      { id: 'contemporary', name: 'Maya Singh', description: 'Modern vocal coach', specialties: ['pop', 'rock', 'jazz'] },
+      { id: 'carnatic', name: 'Smt. Priya', description: 'Carnatic music expert', specialties: ['carnatic', 'swaras', 'bhajans'] },
+    ];
     try {
       const [gRes, tRes] = await Promise.all([
         authFetch(api.vocalGurus),
         authFetch(api.vocalGuruTopics),
       ]);
-      setGurus(await gRes.json());
-      setTopics(await tRes.json());
+      const gurusData = gRes.ok ? await gRes.json() : [];
+      const topicsData = tRes.ok ? await tRes.json() : [];
+      setGurus(Array.isArray(gurusData) && gurusData.length > 0 ? gurusData : fallbackGurus);
+      setTopics(Array.isArray(topicsData) && topicsData.length > 0 ? topicsData : ['breathing', 'pitch', 'warmup']);
     } catch (e) {
-      setGurus([
-        { id: 'classical', name: 'Pandit Ravi', description: 'Classical music maestro', specialties: ['raga', 'tal', 'classical scales'] },
-        { id: 'contemporary', name: 'Maya Singh', description: 'Modern vocal coach', specialties: ['pop', 'rock', 'jazz'] },
-        { id: 'carnatic', name: 'Smt. Priya', description: 'Carnatic music expert', specialties: ['carnatic', 'swaras', 'bhajans'] },
-      ]);
+      setGurus(fallbackGurus);
       setTopics(['breathing', 'pitch', 'warmup']);
     } finally { setLoading(false); }
   };
@@ -37,8 +40,9 @@ const VocalGuruScreen = ({ navigation }) => {
     setTeaching(true);
     try {
       const res = await authFetch(api.vocalGuruGreet(guruId), { method: 'POST' });
+      if (!res.ok) throw new Error('Guru not found');
       const data = await res.json();
-      Alert.alert(data.name, data.greeting);
+      Alert.alert(data.name || 'Guru', data.greeting || 'Welcome!');
     } catch (e) {
       Alert.alert('Error', 'Could not connect to guru');
     } finally { setTeaching(false); }

@@ -24,6 +24,21 @@ if _openai_key and _openai_key != "your-openai-api-key-here" and len(_openai_key
         logger.error(f"OpenAI init failed: {e}")
 
 
+def _parse_json_response(content: str) -> Dict:
+    """Parse JSON from OpenAI response, stripping markdown code fences if present"""
+    text = content.strip()
+    # Remove markdown code fences
+    if text.startswith("```"):
+        # Remove first and last lines (```json and ```)
+        lines = text.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines)
+    return json.loads(text)
+
+
 def generate_lesson(topic: str, difficulty: str, instrument: str, lesson_type: str) -> Dict:
     if OPENAI_AVAILABLE and client:
         try:
@@ -36,7 +51,7 @@ def generate_lesson(topic: str, difficulty: str, instrument: str, lesson_type: s
                 temperature=0.7,
                 max_tokens=1500
             )
-            return json.loads(response.choices[0].message.content)
+            return _parse_json_response(response.choices[0].message.content)
         except Exception as e:
             logger.error(f"OpenAI error: {e}")
 
@@ -78,7 +93,7 @@ def generate_practice_exercise(topic: str, skill_level: str) -> Dict:
                 temperature=0.7,
                 max_tokens=800
             )
-            return json.loads(response.choices[0].message.content)
+            return _parse_json_response(response.choices[0].message.content)
         except Exception as e:
             logger.error(f"OpenAI error: {e}")
 
