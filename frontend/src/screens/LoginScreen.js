@@ -1,139 +1,288 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Title, TextInput, Button, Paragraph } from 'react-native-paper';
-import { api, setAuthToken } from '../config/api';
+import React, { useState, useRef } from 'react';
+import { View, StyleSheet, TextInput, TouchableOpacity, Animated, KeyboardAvoidingView, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { GradientButton } from '../components/UIComponents';
 
 const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isRegister, setIsRegister] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleSubmit = async () => {
-    if (!email || !password || (isRegister && !username)) {
-      Alert.alert('Error', 'Please fill all fields');
+    if (!username.trim() || !password.trim()) {
+      setError('Please fill in all fields');
       return;
     }
-
-    // Fix #6: Client-side validation
+    
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      setError('Password must be at least 6 characters');
       return;
     }
-
-    if (isRegister && username.length < 4) {
-      Alert.alert('Error', 'Username must be at least 4 characters');
-      return;
-    }
-
+    
     setLoading(true);
+    setError('');
+    
     try {
-      if (isRegister) {
-        const res = await fetch(api.register, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, email, password }),
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || 'Registration failed');
-        }
-      }
-
-      const loginRes = await fetch(api.login, {
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+      const res = await fetch(`http://localhost:8003${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
-
-      if (!loginRes.ok) {
-        const err = await loginRes.json();
-        throw new Error(err.detail || 'Login failed');
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.detail || 'Authentication failed');
       }
-
-      const { access_token } = await loginRes.json();
-      await setAuthToken(access_token);
-      navigation.navigate('Home');
+      
+      // Store token
+      if (data.access_token) {
+        await AsyncStorage.setItem('authToken', data.access_token);
+        navigation.replace('Home');
+      }
     } catch (e) {
-      Alert.alert('Error', e.message);
+      setError(e.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.form}>
-        <Title style={styles.title}>{isRegister ? 'Create Account' : 'Welcome Back'}</Title>
-
-        {isRegister && (
-          <TextInput
-            label="Username"
-            value={username}
-            onChangeText={setUsername}
-            mode="outlined"
-            style={styles.input}
-          />
-        )}
-
-        <TextInput
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          mode="outlined"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          style={styles.input}
-        />
-
-        <TextInput
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          mode="outlined"
-          secureTextEntry
-          style={styles.input}
-        />
-
-        <Button
-          mode="contained"
-          onPress={handleSubmit}
-          loading={loading}
-          disabled={loading}
-          style={styles.button}
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <LinearGradient
+        {...createGradient(COLORS.gradient.royal)}
+        style={styles.gradient}
+      >
+        {/* Back Button */}
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
         >
-          {isRegister ? 'Register' : 'Login'}
-        </Button>
+          <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
+        </TouchableOpacity>
 
-        <Button
-          mode="text"
-          onPress={() => setIsRegister(!isRegister)}
-          style={styles.toggle}
-        >
-          {isRegister ? 'Already have an account? Login' : "Don't have an account? Register"}
-        </Button>
+        {/* Header */}
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+          <View style={styles.logoContainer}>
+            <MaterialCommunityIcons name="music-note" size={60} color={COLORS.white} />
+          </View>
+          <Animated.Text style={styles.title}>
+            {isLogin ? 'Welcome Back' : 'Join Viswah'}
+          </Animated.Text>
+          <Animated.Text style={styles.subtitle}>
+            {isLogin ? 'Continue your musical journey' : 'Start your musical journey'}
+          </Animated.Text>
+        </Animated.View>
 
-        <Button
-          mode="text"
-          onPress={() => navigation.navigate('Home')}
-          style={styles.skip}
-        >
-          Skip for now
-        </Button>
-      </View>
-    </ScrollView>
+        {/* Form */}
+        <Animated.View style={[styles.formContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <View style={styles.formCard}>
+            {/* Username Input */}
+            <View style={styles.inputContainer}>
+              <MaterialCommunityIcons name="account" size={20} color={COLORS.gray400} />
+              <TextInput
+                style={styles.input}
+                placeholder="Username"
+                placeholderTextColor={COLORS.gray400}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <MaterialCommunityIcons name="lock" size={20} color={COLORS.gray400} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor={COLORS.gray400}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <MaterialCommunityIcons 
+                  name={showPassword ? "eye-off" : "eye"} 
+                  size={20} 
+                  color={COLORS.gray400} 
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Error Message */}
+            {error ? (
+              <View style={styles.errorContainer}>
+                <MaterialCommunityIcons name="alert-circle" size={16} color={COLORS.error} />
+                <Animated.Text style={styles.errorText}>{error}</Animated.Text>
+              </View>
+            ) : null}
+
+            {/* Submit Button */}
+            <GradientButton
+              title={isLogin ? 'Login' : 'Sign Up'}
+              onPress={handleSubmit}
+              loading={loading}
+              icon={isLogin ? "login" : "account-plus"}
+              colors={COLORS.gradient.primary}
+              style={styles.submitButton}
+            />
+
+            {/* Toggle Auth Mode */}
+            <TouchableOpacity 
+              style={styles.toggleButton}
+              onPress={() => {
+                setIsLogin(!isLogin);
+                setError('');
+              }}
+            >
+              <Animated.Text style={styles.toggleText}>
+                {isLogin ? "Don't have an account? " : "Already have an account? "}
+              </Animated.Text>
+              <Animated.Text style={styles.toggleLink}>
+                {isLogin ? 'Sign Up' : 'Login'}
+              </Animated.Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        {/* Footer */}
+        <Animated.Text style={styles.footer}>
+          By continuing, you agree to our Terms of Service
+        </Animated.Text>
+      </LinearGradient>
+    </KeyboardAvoidingView>
   );
 };
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F6F6F6' },
-  form: { padding: 20, marginTop: 40 },
-  title: { fontSize: 24, marginBottom: 20, textAlign: 'center' },
-  input: { marginBottom: 16 },
-  button: { marginTop: 8, paddingVertical: 4 },
-  toggle: { marginTop: 16 },
-  skip: { marginTop: 8 },
+  container: {
+    flex: 1,
+  },
+  gradient: {
+    flex: 1,
+    paddingHorizontal: SPACING.xl,
+  },
+  backButton: {
+    marginTop: 50,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginTop: SPACING.xxxxl,
+    marginBottom: SPACING.xxxl,
+  },
+  logoContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xl,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: COLORS.white,
+    marginBottom: SPACING.sm,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  formContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  formCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xxl,
+    padding: SPACING.xxl,
+    ...SHADOWS.large,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+    borderRadius: BORDER_RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    fontSize: 16,
+    color: COLORS.black,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  errorText: {
+    color: COLORS.error,
+    fontSize: 14,
+    marginLeft: SPACING.xs,
+  },
+  submitButton: {
+    marginBottom: SPACING.lg,
+  },
+  toggleButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  toggleText: {
+    color: COLORS.gray600,
+    fontSize: 14,
+  },
+  toggleLink: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  footer: {
+    textAlign: 'center',
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    marginBottom: SPACING.xl,
+  },
 });
 
 export default LoginScreen;

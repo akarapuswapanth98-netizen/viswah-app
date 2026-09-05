@@ -1,22 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Title, Paragraph, Button, Card, Chip, ProgressBar } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { GradientButton, ProgressBar, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 
 const SpeechAnalysisScreen = ({ navigation }) => {
   const [exercises, setExercises] = useState([]);
   const [selectedExercise, setSelectedExercise] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
-  const [realtimePitch, setRealtimePitch] = useState(null);
+  const [currentPitch, setCurrentPitch] = useState(0);
+  const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const timerRef = useRef(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const isRecordingRef = useRef(false);
+  const timerRef = useRef(null);
 
-  useEffect(() => { fetchExercises(); }, []);
   useEffect(() => {
+    fetchExercises();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -25,206 +31,543 @@ const SpeechAnalysisScreen = ({ navigation }) => {
   const fetchExercises = async () => {
     try {
       const res = await authFetch(api.speechExercises);
-      if (!res.ok) throw new Error('Failed');
-      const data = await res.json();
-      setExercises(Array.isArray(data) ? data : []);
+      if (res.ok) {
+        const data = await res.json();
+        setExercises(Array.isArray(data) ? data : []);
+      }
     } catch (e) {
-      setExercises([
-        { id: 'scale_c_major', name: 'C Major Scale', description: 'Sing the C major scale', difficulty: 'beginner' },
-        { id: 'vocal_warmup', name: 'Vocal Warm-up', description: 'Five-note pattern', difficulty: 'beginner' },
-        { id: 'pitch_stability', name: 'Pitch Stability', description: 'Hold each note steady', difficulty: 'intermediate' },
-      ]);
-    } finally { setLoading(false); }
-  };
-
-  const startRecording = async () => {
-    setIsRecording(true);
-    isRecordingRef.current = true;
-    setRecordingTime(0);
-    setAnalysis(null);
-    setRealtimePitch(null);
-
-    timerRef.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1);
-      const fakeNotes = ['C4', 'D4', 'E4', 'F4', 'G4'];
-      setRealtimePitch(fakeNotes[Math.floor(Math.random() * fakeNotes.length)]);
-    }, 1000);
-
-    setTimeout(() => {
-      if (isRecordingRef.current) stopRecording();
-    }, 15000);
-  };
-
-  const stopRecording = () => {
-    setIsRecording(false);
-    isRecordingRef.current = false;
-    clearInterval(timerRef.current);
-    setRealtimePitch(null);
-
-    // Simulate analysis result
-    if (selectedExercise) {
-      setAnalysis({
-        exercise: selectedExercise.name,
-        overall_score: Math.floor(Math.random() * 40) + 60,
-        total_notes: 8,
-        analyzed_notes: 8,
-        note_results: Array(8).fill(null).map((_, i) => ({
-          score: Math.floor(Math.random() * 30) + 70,
-          target_note: ['C4', 'D4', 'E4', 'F4', 'G4', 'F4', 'E4', 'D4'][i],
-          actual_note: ['C4', 'D4', 'E4', 'F4', 'G4', 'F4', 'E4', 'D4'][i],
-          cents_off: Math.floor(Math.random() * 40) - 20,
-          feedback: ['Great pitch!', 'Almost there', 'Good tone'][Math.floor(Math.random() * 3)]
-        })),
-        summary: 'Good performance! Keep practicing for better accuracy.'
-      });
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getScoreColor = (score) => score >= 80 ? '#4CAF50' : score >= 60 ? '#FF9800' : '#F44336';
+  const startPulse = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.1, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ])
+    ).start();
+  };
 
-  const getDifficultyColor = (d) => d === 'beginner' ? '#4CAF50' : d === 'intermediate' ? '#FF9800' : '#F44336';
+  const stopPulse = () => {
+    pulseAnim.stopAnimation();
+    pulseAnim.setValue(1);
+  };
 
-  if (loading) return <View style={styles.loading}><Paragraph>Loading...</Paragraph></View>;
+  const handleStartRecording = async () => {
+    setIsRecording(true);
+    isRecordingRef.current = true;
+    setResults(null);
+    setTimeLeft(selectedExercise?.duration || 15);
+    startPulse();
+    
+    // Start timer
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          handleStopRecording();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // Simulate pitch detection
+    const pitchInterval = setInterval(() => {
+      if (!isRecordingRef.current) {
+        clearInterval(pitchInterval);
+        return;
+      }
+      setCurrentPitch(Math.random() * 500 + 100);
+    }, 100);
+  };
+
+  const handleStopRecording = async () => {
+    setIsRecording(false);
+    isRecordingRef.current = false;
+    stopPulse();
+    if (timerRef.current) clearInterval(timerRef.current);
+    
+    // Get results
+    try {
+      const res = await authFetch(`${api.speechScore}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          exercise_id: selectedExercise?.id,
+          pitch_data: [currentPitch],
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setResults(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <MaterialCommunityIcons name="loading" size={40} color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Speech Analysis</Title>
-        <Paragraph style={styles.headerSub}>Analyze your voice in real-time</Paragraph>
-      </View>
+      {/* Header */}
+      <LinearGradient
+        {...createGradient(COLORS.gradient.sunset)}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <View style={styles.headerInfo}>
+            <Animated.Text style={styles.headerTitle}>Speech Analysis</Animated.Text>
+            <Animated.Text style={styles.headerSubtitle}>Analyze your voice in real-time</Animated.Text>
+          </View>
+        </View>
+      </LinearGradient>
 
-      <ScrollView style={styles.content}>
-        {/* Real-time Display */}
-        {isRecording && (
-          <Card style={styles.realtimeCard}>
-            <Card.Content style={styles.realtimeContent}>
-              <MaterialCommunityIcons name="microphone" size={48} color="#F44336" />
-              <Title style={styles.recordingTitle}>Recording...</Title>
-              <Paragraph style={styles.timer}>{recordingTime}s</Paragraph>
-              {realtimePitch && (
-                <View style={styles.pitchDisplay}>
-                  <Title style={styles.pitchNote}>{realtimePitch}</Title>
-                  <Paragraph style={styles.pitchLabel}>Detected Pitch</Paragraph>
-                </View>
-              )}
-              <Button mode="contained" icon="stop" onPress={stopRecording} style={styles.stopBtn}>
-                Stop Recording
-              </Button>
-            </Card.Content>
-          </Card>
-        )}
-
-        {/* Exercises */}
-        {!isRecording && !analysis && (
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Exercise Selection */}
+        {!selectedExercise && (
           <>
-            <Title style={styles.sectionTitle}>Choose Exercise</Title>
-            {exercises.map(ex => (
-              <TouchableOpacity key={ex.id} onPress={() => setSelectedExercise(ex)}>
-                <Card style={[styles.exerciseCard, selectedExercise?.id === ex.id && styles.exerciseSelected]}>
-                  <Card.Content>
-                    <View style={styles.exerciseHeader}>
-                      <MaterialCommunityIcons name="music-note" size={24} color="#6200EE" />
-                      <View style={styles.exerciseInfo}>
-                        <Title style={styles.exerciseName}>{ex.name}</Title>
-                        <Paragraph style={styles.exerciseDesc}>{ex.description}</Paragraph>
-                      </View>
-                      <Chip style={[styles.diffChip, {backgroundColor: getDifficultyColor(ex.difficulty)}]} textStyle={{color: 'white', fontSize: 10}}>
-                        {ex.difficulty}
-                      </Chip>
-                    </View>
-                  </Card.Content>
-                </Card>
+            <Animated.Text style={styles.sectionTitle}>Choose an Exercise</Animated.Text>
+            {exercises.map((exercise) => (
+              <TouchableOpacity
+                key={exercise.id}
+                style={styles.exerciseCard}
+                onPress={() => setSelectedExercise(exercise)}
+              >
+                <View style={[styles.exerciseIcon, { backgroundColor: `${COLORS.primary}15` }]}>
+                  <MaterialCommunityIcons name="music-note" size={24} color={COLORS.primary} />
+                </View>
+                <View style={styles.exerciseInfo}>
+                  <Animated.Text style={styles.exerciseTitle}>{exercise.title || 'Exercise'}</Animated.Text>
+                  <Animated.Text style={styles.exerciseDesc}>{exercise.description}</Animated.Text>
+                  <View style={styles.exerciseTags}>
+                    <Tag label={`${exercise.duration || 15}s`} size="small" />
+                    <Tag label={exercise.difficulty || 'Beginner'} size="small" variant="light" />
+                  </View>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.gray400} />
               </TouchableOpacity>
             ))}
-
-            {selectedExercise && (
-              <Button mode="contained" icon="microphone" onPress={startRecording} style={styles.recordBtn}>
-                Start Recording
-              </Button>
-            )}
           </>
         )}
 
-        {/* Results */}
-        {analysis && (
-          <Card style={styles.resultCard}>
-            <Card.Content>
-              <View style={styles.scoreHeader}>
-                <View style={[styles.scoreCircle, {borderColor: getScoreColor(analysis.overall_score)}]}>
-                  <Title style={[styles.scoreNum, {color: getScoreColor(analysis.overall_score)}]}>{analysis.overall_score}</Title>
-                  <Paragraph style={styles.scoreLabel}>Score</Paragraph>
-                </View>
-                <View style={styles.scoreInfo}>
-                  <Title>{analysis.exercise}</Title>
-                  <Paragraph style={styles.scoreSummary}>{analysis.summary}</Paragraph>
-                  <Paragraph style={styles.noteCount}>{analysis.analyzed_notes}/{analysis.total_notes} notes analyzed</Paragraph>
-                </View>
-              </View>
+        {/* Recording Interface */}
+        {selectedExercise && !results && (
+          <Animated.View style={[styles.recordingContainer, { opacity: fadeAnim }]}>
+            {/* Exercise Info */}
+            <View style={styles.exerciseHeader}>
+              <Animated.Text style={styles.exerciseTitleLarge}>{selectedExercise.title}</Animated.Text>
+              <Animated.Text style={styles.exerciseDescLarge}>{selectedExercise.description}</Animated.Text>
+            </View>
 
-              <Title style={styles.sectionTitle}>Note-by-Note</Title>
-              {analysis.note_results?.map((note, i) => (
-                <View key={i} style={styles.noteRow}>
-                  <View style={styles.noteInfo}>
-                    <Paragraph style={styles.noteTarget}>{note.target_note}</Paragraph>
-                    <Paragraph style={[styles.noteActual, {color: note.target_note === note.actual_note ? '#4CAF50' : '#FF9800'}]}>
-                      {note.actual_note}
-                    </Paragraph>
-                  </View>
-                  <ProgressBar progress={note.score / 100} color={getScoreColor(note.score)} style={styles.noteBar} />
-                  <Paragraph style={styles.noteScore}>{note.score}%</Paragraph>
+            {/* Recording Circle */}
+            <View style={styles.recordingCircleContainer}>
+              <Animated.View style={[styles.recordingCircle, { transform: [{ scale: pulseAnim }] }]}>
+                <LinearGradient
+                  colors={isRecording ? COLORS.gradient.sunset : [COLORS.gray200, COLORS.gray300]}
+                  style={styles.recordingGradient}
+                >
+                  <MaterialCommunityIcons 
+                    name={isRecording ? "microphone" : "microphone-outline"} 
+                    size={60} 
+                    color={isRecording ? COLORS.white : COLORS.gray500} 
+                  />
+                </LinearGradient>
+              </Animated.View>
+              
+              {/* Pitch Indicator */}
+              {isRecording && (
+                <View style={styles.pitchIndicator}>
+                  <Animated.Text style={styles.pitchValue}>{Math.round(currentPitch)} Hz</Animated.Text>
                 </View>
-              ))}
+              )}
+            </View>
 
-              <Button mode="outlined" onPress={() => { setAnalysis(null); setSelectedExercise(null); }} style={styles.retryBtn}>
-                Try Another Exercise
-              </Button>
-            </Card.Content>
-          </Card>
+            {/* Timer */}
+            <View style={styles.timerContainer}>
+              <Animated.Text style={[styles.timerText, timeLeft <= 5 && styles.timerWarning]}>
+                {timeLeft}s
+              </Animated.Text>
+            </View>
+
+            {/* Controls */}
+            <View style={styles.controls}>
+              {!isRecording ? (
+                <GradientButton
+                  title="Start Recording"
+                  onPress={handleStartRecording}
+                  icon="microphone"
+                  colors={COLORS.gradient.sunset}
+                  style={styles.recordButton}
+                />
+              ) : (
+                <GradientButton
+                  title="Stop Recording"
+                  onPress={handleStopRecording}
+                  icon="stop"
+                  colors={['#F44336', '#E53935']}
+                  style={styles.recordButton}
+                />
+              )}
+              
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => setSelectedExercise(null)}
+              >
+                <Animated.Text style={styles.cancelText}>Cancel</Animated.Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
         )}
+
+        {/* Results */}
+        {results && (
+          <Animated.View style={[styles.resultsContainer, { opacity: fadeAnim }]}>
+            <View style={styles.resultsHeader}>
+              <MaterialCommunityIcons name="chart-bar" size={40} color={COLORS.primary} />
+              <Animated.Text style={styles.resultsTitle}>Analysis Complete</Animated.Text>
+            </View>
+
+            {/* Score Card */}
+            <View style={styles.scoreCard}>
+              <Animated.Text style={styles.scoreLabel}>Overall Score</Animated.Text>
+              <Animated.Text style={[styles.scoreValue, { color: results.score >= 70 ? COLORS.success : results.score >= 50 ? COLORS.warning : COLORS.error }]}>
+                {results.score || 0}%
+              </Animated.Text>
+              <ProgressBar 
+                progress={(results.score || 0) / 100} 
+                height={10}
+                color={results.score >= 70 ? COLORS.success : results.score >= 50 ? COLORS.warning : COLORS.error}
+              />
+            </View>
+
+            {/* Detailed Results */}
+            <View style={styles.detailsCard}>
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="music-note" size={20} color={COLORS.primary} />
+                <Animated.Text style={styles.detailLabel}>Pitch Accuracy</Animated.Text>
+                <Animated.Text style={styles.detailValue}>{results.pitch_accuracy || 0}%</Animated.Text>
+              </View>
+              <View style={styles.detailDivider} />
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="waveform" size={20} color={COLORS.secondary} />
+                <Animated.Text style={styles.detailLabel}>Stability</Animated.Text>
+                <Animated.Text style={styles.detailValue}>{results.stability || 0}%</Animated.Text>
+              </View>
+              <View style={styles.detailDivider} />
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="volume-high" size={20} color={COLORS.success} />
+                <Animated.Text style={styles.detailLabel}>Volume</Animated.Text>
+                <Animated.Text style={styles.detailValue}>{results.volume || 0}%</Animated.Text>
+              </View>
+            </View>
+
+            {/* Feedback */}
+            {results.feedback && (
+              <View style={styles.feedbackCard}>
+                <Animated.Text style={styles.feedbackTitle}>Feedback</Animated.Text>
+                <Animated.Text style={styles.feedbackText}>{results.feedback}</Animated.Text>
+              </View>
+            )}
+
+            {/* Actions */}
+            <View style={styles.actions}>
+              <GradientButton
+                title="Try Again"
+                onPress={() => { setResults(null); setSelectedExercise(null); }}
+                icon="refresh"
+                colors={COLORS.gradient.primary}
+                style={styles.actionButton}
+              />
+              <TouchableOpacity 
+                style={styles.backToListButton}
+                onPress={() => { setResults(null); setSelectedExercise(null); }}
+              >
+                <Animated.Text style={styles.backToListText}>Back to Exercises</Animated.Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        )}
+
+        <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F6F6F6' },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { padding: 20, backgroundColor: '#6200EE' },
-  headerTitle: { color: 'white', fontSize: 24 },
-  headerSub: { color: 'white', opacity: 0.8 },
-  content: { flex: 1, padding: 16 },
-  sectionTitle: { fontSize: 18, marginTop: 16, marginBottom: 12 },
-  realtimeCard: { marginBottom: 16, elevation: 4, backgroundColor: '#FFEBEE' },
-  realtimeContent: { alignItems: 'center', padding: 20 },
-  recordingTitle: { color: '#F44336', marginTop: 8 },
-  timer: { fontSize: 32, fontWeight: 'bold', marginTop: 4 },
-  pitchDisplay: { marginTop: 16, alignItems: 'center' },
-  pitchNote: { fontSize: 48, color: '#6200EE' },
-  pitchLabel: { color: '#666' },
-  stopBtn: { marginTop: 16, backgroundColor: '#F44336' },
-  exerciseCard: { marginBottom: 12, elevation: 2 },
-  exerciseSelected: { borderColor: '#6200EE', borderWidth: 2 },
-  exerciseHeader: { flexDirection: 'row', alignItems: 'center' },
-  exerciseInfo: { flex: 1, marginLeft: 12 },
-  exerciseName: { fontSize: 16 },
-  exerciseDesc: { fontSize: 12, color: '#666' },
-  diffChip: { height: 24 },
-  recordBtn: { marginTop: 16 },
-  resultCard: { elevation: 2 },
-  scoreHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  scoreCircle: { width: 80, height: 80, borderRadius: 40, borderWidth: 4, justifyContent: 'center', alignItems: 'center' },
-  scoreNum: { fontSize: 28, fontWeight: 'bold' },
-  scoreLabel: { fontSize: 12, color: '#666' },
-  scoreInfo: { flex: 1, marginLeft: 16 },
-  scoreSummary: { color: '#666', marginTop: 4 },
-  noteCount: { color: '#999', marginTop: 4, fontSize: 12 },
-  noteRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingVertical: 4 },
-  noteInfo: { width: 60 },
-  noteTarget: { fontWeight: 'bold', fontSize: 14 },
-  noteActual: { fontSize: 12 },
-  noteBar: { flex: 1, marginHorizontal: 8, height: 8 },
-  noteScore: { width: 40, textAlign: 'right', fontSize: 12 },
-  retryBtn: { marginTop: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    paddingTop: 50,
+    paddingBottom: SPACING.xl,
+    borderBottomLeftRadius: BORDER_RADIUS.xxl,
+    borderBottomRightRadius: BORDER_RADIUS.xxl,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.lg,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  content: {
+    flex: 1,
+    padding: SPACING.lg,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: SPACING.lg,
+  },
+  exerciseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    ...SHADOWS.small,
+  },
+  exerciseIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: BORDER_RADIUS.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.lg,
+  },
+  exerciseInfo: {
+    flex: 1,
+  },
+  exerciseTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.black,
+    marginBottom: SPACING.xs,
+  },
+  exerciseDesc: {
+    fontSize: 13,
+    color: COLORS.gray500,
+    marginBottom: SPACING.sm,
+  },
+  exerciseTags: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+  },
+  recordingContainer: {
+    alignItems: 'center',
+  },
+  exerciseHeader: {
+    alignItems: 'center',
+    marginBottom: SPACING.xxl,
+  },
+  exerciseTitleLarge: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: SPACING.sm,
+  },
+  exerciseDescLarge: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    textAlign: 'center',
+  },
+  recordingCircleContainer: {
+    alignItems: 'center',
+    marginBottom: SPACING.xxl,
+  },
+  recordingCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    ...SHADOWS.large,
+  },
+  recordingGradient: {
+    flex: 1,
+    borderRadius: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pitchIndicator: {
+    position: 'absolute',
+    bottom: -30,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.full,
+    ...SHADOWS.small,
+  },
+  pitchValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  timerContainer: {
+    marginBottom: SPACING.xxl,
+  },
+  timerText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: COLORS.black,
+  },
+  timerWarning: {
+    color: COLORS.error,
+  },
+  controls: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  recordButton: {
+    width: '80%',
+    marginBottom: SPACING.lg,
+  },
+  cancelButton: {
+    padding: SPACING.md,
+  },
+  cancelText: {
+    color: COLORS.gray500,
+    fontSize: 14,
+  },
+  resultsContainer: {
+    alignItems: 'center',
+  },
+  resultsHeader: {
+    alignItems: 'center',
+    marginBottom: SPACING.xxl,
+  },
+  resultsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginTop: SPACING.md,
+  },
+  scoreCard: {
+    width: '100%',
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    marginBottom: SPACING.lg,
+    alignItems: 'center',
+    ...SHADOWS.small,
+  },
+  scoreLabel: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    marginBottom: SPACING.sm,
+  },
+  scoreValue: {
+    fontSize: 48,
+    fontWeight: '800',
+    marginBottom: SPACING.md,
+  },
+  detailsCard: {
+    width: '100%',
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    marginBottom: SPACING.lg,
+    ...SHADOWS.small,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+  },
+  detailLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.gray700,
+    marginLeft: SPACING.md,
+  },
+  detailValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.black,
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: COLORS.gray100,
+  },
+  feedbackCard: {
+    width: '100%',
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    marginBottom: SPACING.xl,
+    ...SHADOWS.small,
+  },
+  feedbackTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: SPACING.md,
+  },
+  feedbackText: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: COLORS.gray700,
+  },
+  actions: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  actionButton: {
+    width: '80%',
+    marginBottom: SPACING.lg,
+  },
+  backToListButton: {
+    padding: SPACING.md,
+  },
+  backToListText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bottomPadding: {
+    height: 100,
+  },
 });
 
 export default SpeechAnalysisScreen;

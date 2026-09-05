@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from typing import List, Optional
 import json
 import struct
@@ -23,6 +24,17 @@ router = APIRouter(
     prefix="/api/speech",
     tags=["Speech Analysis"]
 )
+
+
+class AudioDataRequest(BaseModel):
+    audio_data: List[float] = Field(..., min_length=1)
+    sample_rate: int = Field(default=44100, ge=8000, le=48000)
+
+
+class ScoreRequest(BaseModel):
+    audio_data: List[float] = Field(..., min_length=1)
+    target_note: str = Field(..., min_length=1)
+    sample_rate: int = Field(default=44100, ge=8000, le=48000)
 
 
 @router.get(
@@ -55,11 +67,9 @@ def get_exercise_info(exercise_id: str):
         400: {"model": ErrorResponse, "description": "Invalid audio data"}
     }
 )
-def analyze_pitch(audio_data: List[float], sample_rate: int = 44100):
+def analyze_pitch(request: AudioDataRequest):
     """Analyze pitch from raw audio data"""
-    if not audio_data:
-        raise HTTPException(status_code=400, detail="No audio data provided")
-    return analyze_pitch_from_data(audio_data, sample_rate)
+    return analyze_pitch_from_data(request.audio_data, request.sample_rate)
 
 
 @router.post(
@@ -69,11 +79,9 @@ def analyze_pitch(audio_data: List[float], sample_rate: int = 44100):
         400: {"model": ErrorResponse, "description": "Invalid audio data"}
     }
 )
-def analyze_volume_endpoint(audio_data: List[float]):
+def analyze_volume_endpoint(request: AudioDataRequest):
     """Analyze volume from raw audio data"""
-    if not audio_data:
-        raise HTTPException(status_code=400, detail="No audio data provided")
-    return analyze_volume(audio_data)
+    return analyze_volume(request.audio_data)
 
 
 @router.post(
@@ -83,14 +91,12 @@ def analyze_volume_endpoint(audio_data: List[float]):
         400: {"model": ErrorResponse, "description": "Invalid data"}
     }
 )
-def score_note(audio_data: List[float], target_note: str, sample_rate: int = 44100):
+def score_note(request: ScoreRequest):
     """Score a single note performance"""
-    if not audio_data:
-        raise HTTPException(status_code=400, detail="No audio data provided")
-    analysis = analyze_pitch_from_data(audio_data, sample_rate)
-    volume = analyze_volume(audio_data)
+    analysis = analyze_pitch_from_data(request.audio_data, request.sample_rate)
+    volume = analyze_volume(request.audio_data)
     analysis.update(volume)
-    return score_performance(analysis, target_note)
+    return score_performance(analysis, request.target_note)
 
 
 @router.post(

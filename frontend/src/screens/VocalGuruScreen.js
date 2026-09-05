@@ -1,194 +1,452 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Title, Paragraph, Button, Card, Chip } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 
 const VocalGuruScreen = ({ navigation }) => {
   const [gurus, setGurus] = useState([]);
-  const [topics, setTopics] = useState([]);
   const [selectedGuru, setSelectedGuru] = useState(null);
-  const [lesson, setLesson] = useState(null);
+  const [currentLesson, setCurrentLesson] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [teaching, setTeaching] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchGurus();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+  }, []);
 
-  const fetchData = async () => {
-    const fallbackGurus = [
-      { id: 'classical', name: 'Pandit Ravi', description: 'Classical music maestro', specialties: ['raga', 'tal', 'classical scales'] },
-      { id: 'contemporary', name: 'Maya Singh', description: 'Modern vocal coach', specialties: ['pop', 'rock', 'jazz'] },
-      { id: 'carnatic', name: 'Smt. Priya', description: 'Carnatic music expert', specialties: ['carnatic', 'swaras', 'bhajans'] },
-    ];
+  const fetchGurus = async () => {
     try {
-      const [gRes, tRes] = await Promise.all([
-        authFetch(api.vocalGurus),
-        authFetch(api.vocalGuruTopics),
-      ]);
-      const gurusData = gRes.ok ? await gRes.json() : [];
-      const topicsData = tRes.ok ? await tRes.json() : [];
-      setGurus(Array.isArray(gurusData) && gurusData.length > 0 ? gurusData : fallbackGurus);
-      setTopics(Array.isArray(topicsData) && topicsData.length > 0 ? topicsData : ['breathing', 'pitch', 'warmup']);
+      const res = await authFetch(api.vocalGuru);
+      if (res.ok) {
+        const data = await res.json();
+        setGurus(Array.isArray(data) ? data : []);
+      }
     } catch (e) {
-      setGurus(fallbackGurus);
-      setTopics(['breathing', 'pitch', 'warmup']);
-    } finally { setLoading(false); }
-  };
-
-  const handleGreet = async (guruId) => {
-    setSelectedGuru(guruId);
-    setTeaching(true);
-    try {
-      const res = await authFetch(api.vocalGuruGreet(guruId), { method: 'POST' });
-      if (!res.ok) throw new Error('Guru not found');
-      const data = await res.json();
-      Alert.alert(data.name || 'Guru', data.greeting || 'Welcome!');
-    } catch (e) {
-      Alert.alert('Error', 'Could not connect to guru');
-    } finally { setTeaching(false); }
-  };
-
-  const handleTeach = async (topic) => {
-    if (!selectedGuru) {
-      Alert.alert('Select Guru', 'Please greet a guru first');
-      return;
-    }
-    setTeaching(true);
-    try {
-      const res = await authFetch(api.vocalGuruTeach(topic, selectedGuru), { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to load lesson');
-      const data = await res.json();
-      setLesson(data);
-    } catch (e) {
-      Alert.alert('Error', 'Could not load lesson');
-    } finally { setTeaching(false); }
-  };
-
-  const getGuruColor = (id) => {
-    switch (id) {
-      case 'classical': return '#FF9800';
-      case 'contemporary': return '#E91E63';
-      case 'carnatic': return '#9C27B0';
-      default: return '#6200EE';
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) return <View style={styles.loading}><Paragraph>Loading...</Paragraph></View>;
+  const handleSelectGuru = (guru) => {
+    setSelectedGuru(guru);
+    setCurrentLesson(null);
+  };
+
+  const handleStartLesson = async (topic) => {
+    if (!selectedGuru) return;
+    
+    try {
+      const res = await authFetch(`${api.vocalGuru}/greet/${selectedGuru.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentLesson({
+          topic,
+          message: data.message || `Welcome! Let's learn about ${topic}`,
+          guru: selectedGuru,
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSpeak = async (text) => {
+    try {
+      setSpeaking(true);
+      const res = await authFetch(`${api.vocalGuru}/speak`, {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      });
+      if (res.ok) {
+        // Audio playback would be handled here
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSpeaking(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <MaterialCommunityIcons name="loading" size={40} color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Vocal Guru</Title>
-        <Paragraph style={styles.headerSub}>Learn from AI music instructors</Paragraph>
-      </View>
-
-      <ScrollView style={styles.content}>
-        {/* Gurus Section */}
-        <Title style={styles.sectionTitle}>Choose Your Guru</Title>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gurusScroll}>
-          {gurus.map(guru => (
-            <TouchableOpacity key={guru.id} onPress={() => handleGreet(guru.id)}>
-              <Card style={[styles.guruCard, selectedGuru === guru.id && styles.guruSelected]}>
-                <Card.Content>
-                  <View style={[styles.guruIcon, {backgroundColor: getGuruColor(guru.id)}]}>
-                    <MaterialCommunityIcons name="account-music" size={32} color="white" />
-                  </View>
-                  <Title style={styles.guruName}>{guru.name}</Title>
-                  <Paragraph style={styles.guruDesc}>{guru.description}</Paragraph>
-                  <View style={styles.specialties}>
-                    {guru.specialties?.slice(0, 2).map(s => (
-                      <Chip key={s} style={styles.specialtyChip}>{s}</Chip>
-                    ))}
-                  </View>
-                </Card.Content>
-              </Card>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Topics Section */}
-        <Title style={styles.sectionTitle}>Lessons</Title>
-        {topics.map(topic => (
-          <TouchableOpacity key={topic} onPress={() => handleTeach(topic)}>
-            <Card style={styles.topicCard}>
-              <Card.Content>
-                <View style={styles.topicContent}>
-                  <MaterialCommunityIcons name="music-note" size={24} color="#6200EE" />
-                  <View style={styles.topicInfo}>
-                    <Title style={styles.topicTitle}>{topic.charAt(0).toUpperCase() + topic.slice(1)}</Title>
-                    <Paragraph style={styles.topicDesc}>Learn {topic} techniques</Paragraph>
-                  </View>
-                  <MaterialCommunityIcons name="play-circle" size={24} color="#6200EE" />
-                </View>
-              </Card.Content>
-            </Card>
+      {/* Header */}
+      <LinearGradient
+        {...createGradient(COLORS.gradient.royal)}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
           </TouchableOpacity>
-        ))}
+          <View style={styles.headerInfo}>
+            <Animated.Text style={styles.headerTitle}>Vocal Guru</Animated.Text>
+            <Animated.Text style={styles.headerSubtitle}>Learn from AI music instructors</Animated.Text>
+          </View>
+        </View>
+      </LinearGradient>
 
-        {/* Lesson Display */}
-        {lesson && (
-          <Card style={styles.lessonCard}>
-            <Card.Content>
-              <Title style={styles.lessonTitle}>{lesson.title}</Title>
-              <Paragraph style={styles.lessonGuru}>With {lesson.guru_name}</Paragraph>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Guru Selection */}
+        {!currentLesson && (
+          <>
+            <Animated.Text style={styles.sectionTitle}>Choose Your Guru</Animated.Text>
+            <View style={styles.gurusGrid}>
+              {gurus.map((guru) => (
+                <TouchableOpacity
+                  key={guru.id}
+                  style={[styles.guruCard, selectedGuru?.id === guru.id && styles.guruCardSelected]}
+                  onPress={() => handleSelectGuru(guru)}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={selectedGuru?.id === guru.id ? COLORS.gradient.primary : [COLORS.gray100, COLORS.white]}
+                    style={styles.guruGradient}
+                  >
+                    <View style={[styles.guruAvatar, { backgroundColor: guru.color || COLORS.primary }]}>
+                      <MaterialCommunityIcons name={guru.icon || "account-music"} size={32} color={COLORS.white} />
+                    </View>
+                    <Animated.Text style={[styles.guruName, selectedGuru?.id === guru.id && styles.guruNameSelected]}>
+                      {guru.name || 'Guru'}
+                    </Animated.Text>
+                    <Animated.Text style={[styles.guruStyle, selectedGuru?.id === guru.id && styles.guruStyleSelected]}>
+                      {guru.style || 'Vocal Training'}
+                    </Animated.Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-              <Title style={styles.stepsTitle}>Steps:</Title>
-              {lesson.steps?.map((step, i) => (
-                <View key={i} style={styles.step}>
-                  <Paragraph style={styles.stepNum}>{i + 1}.</Paragraph>
-                  <Paragraph style={styles.stepText}>{step}</Paragraph>
+            {/* Lesson Topics */}
+            {selectedGuru && (
+              <Animated.View style={[styles.topicsContainer, { opacity: fadeAnim }]}>
+                <Animated.Text style={styles.sectionTitle}>Choose a Topic</Animated.Text>
+                {['breathing', 'pitch', 'warmup', 'scales', 'vibrato'].map((topic) => (
+                  <TouchableOpacity
+                    key={topic}
+                    style={styles.topicCard}
+                    onPress={() => handleStartLesson(topic)}
+                  >
+                    <View style={[styles.topicIcon, { backgroundColor: `${COLORS.primary}15` }]}>
+                      <MaterialCommunityIcons name="music-note" size={24} color={COLORS.primary} />
+                    </View>
+                    <Animated.Text style={styles.topicTitle}>{topic.charAt(0).toUpperCase() + topic.slice(1)}</Animated.Text>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.gray400} />
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
+            )}
+          </>
+        )}
+
+        {/* Current Lesson */}
+        {currentLesson && (
+          <Animated.View style={[styles.lessonContainer, { opacity: fadeAnim }]}>
+            {/* Lesson Header */}
+            <View style={styles.lessonHeader}>
+              <View style={[styles.guruAvatarLarge, { backgroundColor: currentLesson.guru.color || COLORS.primary }]}>
+                <MaterialCommunityIcons name={currentLesson.guru.icon || "account-music"} size={48} color={COLORS.white} />
+              </View>
+              <Animated.Text style={styles.lessonGuruName}>{currentLesson.guru.name}</Animated.Text>
+              <Tag label={currentLesson.topic} color={COLORS.primary} />
+            </View>
+
+            {/* Lesson Content */}
+            <View style={styles.lessonCard}>
+              <Animated.Text style={styles.lessonMessage}>{currentLesson.message}</Animated.Text>
+              
+              <View style={styles.lessonActions}>
+                <GradientButton
+                  title="Listen"
+                  onPress={() => handleSpeak(currentLesson.message)}
+                  icon="volume-high"
+                  colors={COLORS.gradient.ocean}
+                  loading={speaking}
+                  style={styles.listenButton}
+                />
+                <TouchableOpacity 
+                  style={styles.stopButton}
+                  onPress={() => {/* Stop audio */}}
+                >
+                  <MaterialCommunityIcons name="stop" size={24} color={COLORS.error} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Next Steps */}
+            <View style={styles.nextSteps}>
+              <Animated.Text style={styles.nextStepsTitle}>Next Steps</Animated.Text>
+              {['Practice breathing', 'Try pitch exercises', 'Record yourself'].map((step, index) => (
+                <View key={index} style={styles.stepItem}>
+                  <View style={[styles.stepNumber, { backgroundColor: COLORS.primary }]}>
+                    <Animated.Text style={styles.stepNumberText}>{index + 1}</Animated.Text>
+                  </View>
+                  <Animated.Text style={styles.stepText}>{step}</Animated.Text>
                 </View>
               ))}
+            </View>
 
-              <Title style={styles.tipsTitle}>Tips:</Title>
-              {lesson.tips?.map((tip, i) => (
-                <Paragraph key={i} style={styles.tip}>• {tip}</Paragraph>
-              ))}
-
-              {lesson.audio_available && (
-                <Button mode="contained" icon="play" style={styles.playBtn} onPress={() => Alert.alert('Coming Soon', 'Audio playback will be available soon!')}>
-                  Listen to Guru
-                </Button>
-              )}
-            </Card.Content>
-          </Card>
+            {/* Back Button */}
+            <TouchableOpacity 
+              style={styles.backToGurusButton}
+              onPress={() => setCurrentLesson(null)}
+            >
+              <MaterialCommunityIcons name="arrow-left" size={20} color={COLORS.primary} />
+              <Animated.Text style={styles.backToGurusText}>Choose Another Guru</Animated.Text>
+            </TouchableOpacity>
+          </Animated.View>
         )}
+
+        <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
   );
 };
 
+import { useRef } from 'react';
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F6F6F6' },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { padding: 20, backgroundColor: '#6200EE' },
-  headerTitle: { color: 'white', fontSize: 24 },
-  headerSub: { color: 'white', opacity: 0.8 },
-  content: { flex: 1, padding: 16 },
-  sectionTitle: { fontSize: 18, marginTop: 16, marginBottom: 12 },
-  gurusScroll: { marginBottom: 16 },
-  guruCard: { width: 200, marginRight: 16, elevation: 2 },
-  guruSelected: { borderColor: '#6200EE', borderWidth: 2 },
-  guruIcon: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  guruName: { fontSize: 16 },
-  guruDesc: { fontSize: 12, color: '#666', marginTop: 4 },
-  specialties: { flexDirection: 'row', marginTop: 8, flexWrap: 'wrap' },
-  specialtyChip: { marginRight: 4, marginBottom: 4, height: 24 },
-  topicCard: { marginBottom: 12, elevation: 2 },
-  topicContent: { flexDirection: 'row', alignItems: 'center' },
-  topicInfo: { flex: 1, marginLeft: 12 },
-  topicTitle: { fontSize: 16 },
-  topicDesc: { fontSize: 12, color: '#666' },
-  lessonCard: { marginTop: 16, elevation: 2, backgroundColor: '#E8EAF6' },
-  lessonTitle: { fontSize: 20 },
-  lessonGuru: { color: '#666', marginTop: 4 },
-  stepsTitle: { marginTop: 16, marginBottom: 8 },
-  step: { flexDirection: 'row', marginBottom: 8 },
-  stepNum: { fontWeight: 'bold', marginRight: 8 },
-  stepText: { flex: 1 },
-  tipsTitle: { marginTop: 16, marginBottom: 8 },
-  tip: { marginBottom: 4, color: '#666' },
-  playBtn: { marginTop: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    paddingTop: 50,
+    paddingBottom: SPACING.xl,
+    borderBottomLeftRadius: BORDER_RADIUS.xxl,
+    borderBottomRightRadius: BORDER_RADIUS.xxl,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.lg,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  content: {
+    flex: 1,
+    padding: SPACING.lg,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: SPACING.lg,
+  },
+  gurusGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
+  },
+  guruCard: {
+    width: '48%',
+    borderRadius: BORDER_RADIUS.xl,
+    overflow: 'hidden',
+    ...SHADOWS.small,
+  },
+  guruCardSelected: {
+    ...SHADOWS.medium,
+  },
+  guruGradient: {
+    padding: SPACING.xl,
+    alignItems: 'center',
+  },
+  guruAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.md,
+  },
+  guruName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: SPACING.xs,
+  },
+  guruNameSelected: {
+    color: COLORS.white,
+  },
+  guruStyle: {
+    fontSize: 12,
+    color: COLORS.gray500,
+  },
+  guruStyleSelected: {
+    color: 'rgba(255,255,255,0.8)',
+  },
+  topicsContainer: {
+    marginTop: SPACING.lg,
+  },
+  topicCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    ...SHADOWS.small,
+  },
+  topicIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: BORDER_RADIUS.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.lg,
+  },
+  topicTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.black,
+  },
+  lessonContainer: {
+    marginTop: SPACING.lg,
+  },
+  lessonHeader: {
+    alignItems: 'center',
+    marginBottom: SPACING.xl,
+  },
+  guruAvatarLarge: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+    ...SHADOWS.medium,
+  },
+  lessonGuruName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: SPACING.sm,
+  },
+  lessonCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    marginBottom: SPACING.xl,
+    ...SHADOWS.small,
+  },
+  lessonMessage: {
+    fontSize: 16,
+    lineHeight: 26,
+    color: COLORS.gray700,
+    marginBottom: SPACING.xl,
+  },
+  lessonActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  listenButton: {
+    flex: 1,
+  },
+  stopButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.gray100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: SPACING.md,
+  },
+  nextSteps: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    marginBottom: SPACING.xl,
+    ...SHADOWS.small,
+  },
+  nextStepsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: SPACING.lg,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  stepNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.md,
+  },
+  stepNumberText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  stepText: {
+    fontSize: 14,
+    color: COLORS.gray700,
+  },
+  backToGurusButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    padding: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  backToGurusText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: SPACING.sm,
+  },
+  bottomPadding: {
+    height: 100,
+  },
 });
 
 export default VocalGuruScreen;

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+from sqlalchemy import text
 from database import engine, Base, SessionLocal
 from models.schemas import SuccessResponse
 from routes import auth, courses, ai_routes, vocal_guru, speech_analysis, lyrics_creator
@@ -13,11 +14,21 @@ from seed_data import seed_database
 load_dotenv()
 
 Base.metadata.create_all(bind=engine)
+
+# Auto-migrate: add quiz_questions column if missing (for existing DBs)
+with engine.connect() as conn:
+    result = conn.execute(text("PRAGMA table_info(lessons)"))
+    columns = [row[1] for row in result]
+    if "quiz_questions" not in columns:
+        conn.execute(text("ALTER TABLE lessons ADD COLUMN quiz_questions TEXT"))
+        conn.commit()
+
 db = SessionLocal()
 try:
     seed_database(db)
 finally:
     db.close()
+db = None  # Release reference
 
 app = FastAPI(
     title="Viswah Music Learning API",
