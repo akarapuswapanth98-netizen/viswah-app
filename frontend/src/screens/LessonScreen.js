@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Title, Paragraph, Button, Card, Divider } from 'react-native-paper';
+import { Title, Paragraph, Button, Card } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api, authFetch, getAuthToken } from '../config/api';
 

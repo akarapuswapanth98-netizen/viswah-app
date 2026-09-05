@@ -135,6 +135,8 @@ def update_progress(
         existing.completed = progress.completed
         if progress.completed and not existing.completed_at:
             existing.completed_at = datetime.now(timezone.utc)
+        elif not progress.completed:
+            existing.completed_at = None
     if progress.score is not None:
         existing.score = progress.score
     if progress.time_spent_minutes is not None:

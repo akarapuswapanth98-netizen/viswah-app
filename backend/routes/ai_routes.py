@@ -1,6 +1,6 @@
 # AI Lesson Routes - Fixed with Auth
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from models.schemas import (
     LessonGenerateRequest, LessonGenerateResponse,
     ExerciseGenerateRequest, ExerciseResponse,
