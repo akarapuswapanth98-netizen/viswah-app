@@ -1,14 +1,20 @@
 # AI Lesson Routes - Fixed with Auth
 
 from fastapi import APIRouter, Depends, HTTPException
-from models.schemas import (
-    LessonGenerateRequest, LessonGenerateResponse,
-    ExerciseGenerateRequest, ExerciseResponse,
-    TopicsResponse, ErrorResponse, InstrumentType, DifficultyLevel
-)
-from services.ai_lesson_generator import generate_lesson, generate_practice_exercise
+
 from models.models import User
+from models.schemas import (
+    DifficultyLevel,
+    ErrorResponse,
+    ExerciseGenerateRequest,
+    ExerciseResponse,
+    InstrumentType,
+    LessonGenerateRequest,
+    LessonGenerateResponse,
+    TopicsResponse,
+)
 from routes.auth import get_current_user
+from services.ai_lesson_generator import generate_lesson, generate_practice_exercise
 
 router = APIRouter(
     prefix="/api/ai",

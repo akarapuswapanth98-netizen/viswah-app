@@ -1,25 +1,30 @@
-from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
-from typing import List, Optional
+from sqlalchemy.orm import Session
 
 from database import get_db
-from models.models import Course, Lesson, Progress, UserCourse, User
+from models.models import Course, Lesson, Progress, User, UserCourse
 from models.schemas import (
-    CourseResponse, LessonResponse, ProgressUpdate, ProgressPatch,
-    ProgressResponse, EnrollmentResponse, EnrolledCourseResponse,
-    InstrumentType
+    CourseResponse,
+    EnrolledCourseResponse,
+    EnrollmentResponse,
+    InstrumentType,
+    LessonResponse,
+    ProgressPatch,
+    ProgressResponse,
+    ProgressUpdate,
 )
 from routes.auth import get_current_user
 
 router = APIRouter(prefix="/api", tags=["Courses"])
 
 
-@router.get("/courses", response_model=List[CourseResponse])
+@router.get("/courses", response_model=list[CourseResponse])
 def get_courses(
-    stage: Optional[int] = Query(default=None, ge=1, le=4),
-    instrument: Optional[InstrumentType] = None,
+    stage: int | None = Query(default=None, ge=1, le=4),
+    instrument: InstrumentType | None = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Course)
@@ -38,7 +43,7 @@ def get_course(course_id: int, db: Session = Depends(get_db)):
     return course
 
 
-@router.get("/courses/{course_id}/lessons", response_model=List[LessonResponse])
+@router.get("/courses/{course_id}/lessons", response_model=list[LessonResponse])
 def get_course_lessons(course_id: int, db: Session = Depends(get_db)):
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
@@ -70,7 +75,7 @@ def enroll_course(
     return EnrollmentResponse(message="Successfully enrolled", course_id=course_id)
 
 
-@router.get("/enrolled", response_model=List[EnrolledCourseResponse])
+@router.get("/enrolled", response_model=list[EnrolledCourseResponse])
 def get_enrolled_courses(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -104,7 +109,7 @@ def create_progress(
             existing.score = max(existing.score, progress.score)
             existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
             if not existing.completed_at:
-                existing.completed_at = datetime.now(timezone.utc)
+                existing.completed_at = datetime.now(UTC)
         else:
             existing.score = progress.score
             existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
@@ -119,7 +124,7 @@ def create_progress(
         completed=progress.completed,
         score=progress.score,
         time_spent_minutes=progress.time_spent_minutes,
-        completed_at=datetime.now(timezone.utc) if progress.completed else None
+        completed_at=datetime.now(UTC) if progress.completed else None
     )
     try:
         db.add(new_progress)
@@ -138,7 +143,7 @@ def create_progress(
                 existing.score = max(existing.score, progress.score)
                 existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
                 if not existing.completed_at:
-                    existing.completed_at = datetime.now(timezone.utc)
+                    existing.completed_at = datetime.now(UTC)
             else:
                 existing.score = progress.score
                 existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
@@ -163,7 +168,7 @@ def update_progress(
     if progress.completed is not None:
         existing.completed = progress.completed
         if progress.completed and not existing.completed_at:
-            existing.completed_at = datetime.now(timezone.utc)
+            existing.completed_at = datetime.now(UTC)
         elif not progress.completed:
             existing.completed_at = None
     if progress.score is not None:
@@ -176,9 +181,9 @@ def update_progress(
     return existing
 
 
-@router.get("/progress", response_model=List[ProgressResponse])
+@router.get("/progress", response_model=list[ProgressResponse])
 def get_user_progress(
-    lesson_id: Optional[int] = None,
+    lesson_id: int | None = None,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
     current_user: User = Depends(get_current_user),

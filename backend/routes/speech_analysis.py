@@ -1,23 +1,21 @@
 # Speech Analysis Routes
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
-from pydantic import BaseModel, Field
-from typing import List
-import json
-import struct
 import logging
+import struct
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 from models.schemas import ErrorResponse
 from services.speech_analysis import (
+    analyze_full_session,
     analyze_pitch_from_data,
     analyze_volume,
-    score_performance,
-    get_exercise,
     get_all_exercises,
-    analyze_full_session,
-    EXERCISES
+    get_exercise,
+    score_performance,
 )
 
 router = APIRouter(
@@ -27,19 +25,19 @@ router = APIRouter(
 
 
 class AudioDataRequest(BaseModel):
-    audio_data: List[float] = Field(..., min_length=1)
+    audio_data: list[float] = Field(..., min_length=1)
     sample_rate: int = Field(default=44100, ge=8000, le=48000)
 
 
 class ScoreRequest(BaseModel):
-    audio_data: List[float] = Field(..., min_length=1)
+    audio_data: list[float] = Field(..., min_length=1)
     target_note: str = Field(..., min_length=1)
     sample_rate: int = Field(default=44100, ge=8000, le=48000)
 
 
 @router.get(
     "/exercises",
-    response_model=List[dict],
+    response_model=list[dict],
     responses={422: {"model": ErrorResponse}}
 )
 def list_exercises():

@@ -1,11 +1,7 @@
 # Speech Analysis Service - Voice Feedback Engine
 
-import os
-import math
-import struct
 import logging
-from typing import Dict, List, Optional
-from collections import Counter
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +87,7 @@ def frequency_to_cents(freq: float, target_freq: float) -> float:
     return 1200 * math.log2(freq / target_freq)
 
 
-def analyze_pitch_from_data(audio_data: List[float], sample_rate: int = 44100) -> Dict:
+def analyze_pitch_from_data(audio_data: list[float], sample_rate: int = 44100) -> dict:
     """
     Analyze pitch from raw audio data using autocorrelation.
     Returns pitch analysis results.
@@ -105,7 +101,7 @@ def analyze_pitch_from_data(audio_data: List[float], sample_rate: int = 44100) -
         return _analyze_pitch_basic(audio_data, sample_rate)
 
 
-def _analyze_pitch_numpy(audio_data: List[float], sample_rate: int) -> Dict:
+def _analyze_pitch_numpy(audio_data: list[float], sample_rate: int) -> dict:
     """Pitch analysis using numpy autocorrelation"""
     try:
         audio = np.array(audio_data, dtype=np.float64)
@@ -172,7 +168,7 @@ def _analyze_pitch_numpy(audio_data: List[float], sample_rate: int) -> Dict:
         return {"pitch": 0, "note": "Unknown", "stability": 0, "cents": 0, "confidence": 0}
 
 
-def _analyze_pitch_basic(audio_data: List[float], sample_rate: int) -> Dict:
+def _analyze_pitch_basic(audio_data: list[float], sample_rate: int) -> dict:
     """Basic pitch analysis without numpy"""
     try:
         # Simple zero-crossing rate for pitch estimation
@@ -203,7 +199,7 @@ def _analyze_pitch_basic(audio_data: List[float], sample_rate: int) -> Dict:
         return {"pitch": 0, "note": "Unknown", "stability": 0, "cents": 0, "confidence": 0}
 
 
-def analyze_volume(audio_data: List[float]) -> Dict:
+def analyze_volume(audio_data: list[float]) -> dict:
     """Analyze volume/loudness of audio"""
     if not audio_data:
         return {"rms": 0, "peak": 0, "db": -60}
@@ -226,7 +222,7 @@ def analyze_volume(audio_data: List[float]) -> Dict:
     }
 
 
-def score_performance(analysis: Dict, target_note: str) -> Dict:
+def score_performance(analysis: dict, target_note: str) -> dict:
     """Score the user's performance for a single note"""
     score = 0
     feedback = []
@@ -288,17 +284,17 @@ def score_performance(analysis: Dict, target_note: str) -> Dict:
     }
 
 
-def get_exercise(exercise_id: str) -> Optional[Dict]:
+def get_exercise(exercise_id: str) -> dict | None:
     """Get exercise details"""
     return EXERCISES.get(exercise_id)
 
 
-def get_all_exercises() -> List[Dict]:
+def get_all_exercises() -> list[dict]:
     """Get all available exercises"""
     return [{"id": eid, **ex} for eid, ex in EXERCISES.items()]
 
 
-def analyze_full_session(audio_segments: List[Dict], exercise_id: str) -> Dict:
+def analyze_full_session(audio_segments: list[dict], exercise_id: str) -> dict:
     """Analyze a complete singing session"""
     exercise = EXERCISES.get(exercise_id)
     if not exercise:
@@ -334,7 +330,7 @@ def analyze_full_session(audio_segments: List[Dict], exercise_id: str) -> Dict:
     }
 
 
-def _generate_summary(score: float, results: List[Dict]) -> str:
+def _generate_summary(score: float, results: list[dict]) -> str:
     """Generate a text summary of the performance"""
     if score >= 90:
         return "Excellent performance! Your pitch and tone are very accurate."

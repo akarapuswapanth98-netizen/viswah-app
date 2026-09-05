@@ -1,17 +1,19 @@
 # Viswah Backend - FastAPI Main
 
-import os
 import logging
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
 from sqlalchemy import text
-from database import engine, Base, SessionLocal
+
+from database import Base, SessionLocal, engine
 from models.schemas import SuccessResponse
-from routes import auth, courses, ai_routes, vocal_guru, speech_analysis, lyrics_creator
+from routes import ai_routes, auth, courses, lyrics_creator, speech_analysis, vocal_guru
 from seed_data import seed_database
 
 load_dotenv()

@@ -1,11 +1,10 @@
 # Pydantic Schemas for API - Fixed
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, List
+import json
 from datetime import datetime
 from enum import Enum
-import json
 
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 # ============ Shared Enums ============
 
@@ -79,7 +78,7 @@ class CourseResponse(BaseModel):
     stage: int
     instrument: InstrumentType
     difficulty: DifficultyLevel
-    image_url: Optional[str] = None  # Fix #5: Simple nullable string
+    image_url: str | None = None  # Fix #5: Simple nullable string
 
     class Config:
         from_attributes = True
@@ -92,11 +91,11 @@ class LessonResponse(BaseModel):
     course_id: int
     title: str
     content: str
-    audio_url: Optional[str] = None
+    audio_url: str | None = None
     order: int
     lesson_type: LessonType
     duration_minutes: int = Field(..., ge=1)
-    quiz_questions: Optional[List[dict]] = None
+    quiz_questions: list[dict] | None = None
 
     @field_validator('quiz_questions', mode='before')
     @classmethod
@@ -121,7 +120,7 @@ class ProgressResponse(BaseModel):
     completed: bool
     score: float
     time_spent_minutes: int
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -136,9 +135,9 @@ class ProgressUpdate(BaseModel):
 
 class ProgressPatch(BaseModel):
     """Partial update for progress"""
-    completed: Optional[bool] = None
-    score: Optional[float] = Field(default=None, ge=0, le=100)
-    time_spent_minutes: Optional[int] = Field(default=None, ge=0)
+    completed: bool | None = None
+    score: float | None = Field(default=None, ge=0, le=100)
+    time_spent_minutes: int | None = Field(default=None, ge=0)
 
 
 # ============ Enrollment Schemas ============
@@ -171,15 +170,15 @@ class LessonGenerateRequest(BaseModel):
 
 class QuizQuestion(BaseModel):
     question: str = Field(..., min_length=5, max_length=500)
-    options: List[str] = Field(..., min_length=2, max_length=6)
+    options: list[str] = Field(..., min_length=2, max_length=6)
     correct_answer: str = Field(..., min_length=1)
 
 
 class LessonGenerateResponse(BaseModel):
     title: str
     content: str
-    quiz_questions: List[QuizQuestion] = Field(default=[], min_length=0)
-    tips: List[str] = Field(default=[], min_length=0)
+    quiz_questions: list[QuizQuestion] = Field(default=[], min_length=0)
+    tips: list[str] = Field(default=[], min_length=0)
 
 
 class ExerciseGenerateRequest(BaseModel):
@@ -189,7 +188,7 @@ class ExerciseGenerateRequest(BaseModel):
 
 class ExerciseResponse(BaseModel):
     exercise_name: str
-    instructions: List[str] = Field(..., min_length=1)
+    instructions: list[str] = Field(..., min_length=1)
     duration: str = Field(..., min_length=1, pattern=r"^\d+\s*(min|minutes|mins|hour|hours|hrs|sec|seconds|s)$")
     success_criteria: str = Field(..., min_length=1)
 
@@ -197,7 +196,7 @@ class ExerciseResponse(BaseModel):
 class TopicsResponse(BaseModel):
     instrument: InstrumentType
     difficulty: DifficultyLevel
-    topics: List[str] = Field(..., min_length=1)
+    topics: list[str] = Field(..., min_length=1)
 
 
 # ============ Error Schemas ============

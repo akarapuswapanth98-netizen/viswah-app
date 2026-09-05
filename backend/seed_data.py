@@ -1,7 +1,9 @@
 # Seed Data - Initial Courses and Lessons
 
 import json
+
 from sqlalchemy.orm import Session
+
 from models.models import Course, Lesson
 
 

@@ -1,16 +1,20 @@
 # Vocal Guru Routes
 
+import atexit
+import os
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
-from typing import List
-import os
-import atexit
 
 from models.schemas import ErrorResponse
 from services.vocal_guru import (
-    get_guru, get_all_gurus, get_lesson_content,
-    get_available_topics, generate_speech,
-    generate_greeting, generate_lesson_speech
+    generate_greeting,
+    generate_lesson_speech,
+    generate_speech,
+    get_all_gurus,
+    get_available_topics,
+    get_guru,
+    get_lesson_content,
 )
 
 router = APIRouter(
@@ -19,7 +23,7 @@ router = APIRouter(
 )
 
 # Fix #3: Track and clean up generated temp audio files
-_generated_audio_files: List[str] = []
+_generated_audio_files: list[str] = []
 
 def _cleanup_audio_files():
     for path in _generated_audio_files:
@@ -35,7 +39,7 @@ atexit.register(_cleanup_audio_files)
 
 @router.get(
     "/gurus",
-    response_model=List[dict],
+    response_model=list[dict],
     responses={422: {"model": ErrorResponse}}
 )
 def list_gurus():
@@ -60,7 +64,7 @@ def get_guru_info(guru_id: str):
 
 @router.get(
     "/topics",
-    response_model=List[str]
+    response_model=list[str]
 )
 def list_topics():
     """Get available lesson topics"""
@@ -113,6 +117,7 @@ def teach_topic(topic: str, guru_id: str = "classical"):
 
 
 from pydantic import BaseModel, Field
+
 
 class SpeakRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=5000)

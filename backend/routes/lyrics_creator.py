@@ -1,13 +1,17 @@
 # Lyrics Creator Routes
 
-from fastapi import APIRouter, HTTPException
-from typing import List, Optional
+
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from models.schemas import ErrorResponse
 from services.lyrics_creator import (
-    generate_lyrics, improve_lyrics, analyze_lyrics,
-    format_lyrics, get_genres, get_moods
+    analyze_lyrics,
+    format_lyrics,
+    generate_lyrics,
+    get_genres,
+    get_moods,
+    improve_lyrics,
 )
 
 router = APIRouter(
@@ -39,7 +43,7 @@ class LyricsFormatRequest(BaseModel):
 
 @router.get(
     "/genres",
-    response_model=List[dict]
+    response_model=list[dict]
 )
 def list_genres():
     """Get available music genres"""
@@ -48,7 +52,7 @@ def list_genres():
 
 @router.get(
     "/moods",
-    response_model=List[dict]
+    response_model=list[dict]
 )
 def list_moods():
     """Get available moods"""

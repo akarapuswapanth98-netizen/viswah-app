@@ -1,7 +1,20 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, UniqueConstraint, CheckConstraint
+from datetime import UTC, datetime
+
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
+
 from database import Base
-from datetime import datetime, timezone
 
 
 class User(Base):
@@ -15,7 +28,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True)
     hashed_password = Column(String(200))
     level = Column(String(20), default="beginner")
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     progress = relationship("Progress", back_populates="user")
     courses = relationship("UserCourse", back_populates="user")
@@ -34,7 +47,7 @@ class Course(Base):
     instrument = Column(String(50))
     difficulty = Column(String(20))
     image_url = Column(String(200), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     lessons = relationship("Lesson", back_populates="course")
     user_courses = relationship("UserCourse", back_populates="course")
@@ -52,7 +65,7 @@ class Lesson(Base):
     lesson_type = Column(String(20))
     duration_minutes = Column(Integer)
     quiz_questions = Column(Text, nullable=True)  # JSON string
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     course = relationship("Course", back_populates="lessons")
     progress = relationship("Progress", back_populates="lesson")
@@ -86,7 +99,7 @@ class UserCourse(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
-    enrolled_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    enrolled_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     user = relationship("User", back_populates="courses")
     course = relationship("Course")

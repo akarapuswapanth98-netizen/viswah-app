@@ -1,19 +1,23 @@
 # Authentication Routes
 
 import os
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from passlib.context import CryptContext
-from jose import JWTError, jwt
-from datetime import datetime, timedelta, timezone
-from fastapi.security import OAuth2PasswordBearer
+from datetime import UTC, datetime, timedelta
+
 from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 
 from database import get_db
 from models.models import User
 from models.schemas import (
-    UserCreate, UserResponse, LoginRequest,
-    TokenResponse, ErrorResponse
+    ErrorResponse,
+    LoginRequest,
+    TokenResponse,
+    UserCreate,
+    UserResponse,
 )
 
 load_dotenv()
@@ -42,7 +46,7 @@ def get_password_hash(password):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 

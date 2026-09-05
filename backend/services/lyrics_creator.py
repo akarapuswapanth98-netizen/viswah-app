@@ -1,10 +1,9 @@
 # Lyrics Creator Service - AI-Powered Lyrics Generation
 
-import os
 import json
 import logging
-import re
-from typing import Dict, List, Optional
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -69,7 +68,7 @@ RHYME_PATTERNS = {
 }
 
 
-def _pair_rhyme(lines: List[str], i: int, j: int) -> bool:
+def _pair_rhyme(lines: list[str], i: int, j: int) -> bool:
     """Simple rhyme check using last words"""
     if i >= len(lines) or j >= len(lines):
         return False
@@ -79,7 +78,7 @@ def _pair_rhyme(lines: List[str], i: int, j: int) -> bool:
     return word1[-3:] == word2[-3:] if len(word1) > 2 and len(word2) > 2 else False
 
 
-def _parse_json_response(content: str) -> Dict:
+def _parse_json_response(content: str) -> dict:
     """Parse JSON from OpenAI response, stripping markdown code fences"""
     text = content.strip()
     if text.startswith("```"):
@@ -93,7 +92,7 @@ def _parse_json_response(content: str) -> Dict:
 
 
 def generate_lyrics(topic: str, genre: str = "pop", mood: str = "happy", 
-                    language: str = "english") -> Dict:
+                    language: str = "english") -> dict:
     """Generate lyrics using AI or fallback"""
     if OPENAI_AVAILABLE and client:
         try:
@@ -127,9 +126,8 @@ Return JSON with:
     return _get_fallback_lyrics(topic, genre, mood)
 
 
-def _get_fallback_lyrics(topic: str, genre: str, mood: str) -> Dict:
+def _get_fallback_lyrics(topic: str, genre: str, mood: str) -> dict:
     """Generate fallback lyrics when AI is unavailable"""
-    template = GENRE_TEMPLATES.get(genre.lower(), GENRE_TEMPLATES["pop"])
     theme = topic.lower()
 
     lyrics_data = {
@@ -138,38 +136,38 @@ def _get_fallback_lyrics(topic: str, genre: str, mood: str) -> Dict:
                 "title": f"Shining {theme.title()}",
                 "lyrics": [
                     {"section_name": "verse1", "lines": [
-                        f"Woke up this morning, feeling so bright",
-                        f"Thinking about you, everything's right",
-                        f"The sun is shining, sky so blue",
-                        f"Every moment I spend with you"
+                        "Woke up this morning, feeling so bright",
+                        "Thinking about you, everything's right",
+                        "The sun is shining, sky so blue",
+                        "Every moment I spend with you"
                     ]},
                     {"section_name": "chorus", "lines": [
                         f"Oh {theme}, you make me smile",
-                        f"Stay with me, stay a while",
-                        f"Dancing through the day and night",
-                        f"You and me, everything's alright"
+                        "Stay with me, stay a while",
+                        "Dancing through the day and night",
+                        "You and me, everything's alright"
                     ]},
                     {"section_name": "verse2", "lines": [
-                        f"Walking down the street, hand in hand",
-                        f"Nothing in this world could be so grand",
-                        f"The music plays, we sing along",
-                        f"With you here, where I belong"
+                        "Walking down the street, hand in hand",
+                        "Nothing in this world could be so grand",
+                        "The music plays, we sing along",
+                        "With you here, where I belong"
                     ]},
                     {"section_name": "chorus", "lines": [
                         f"Oh {theme}, you make me smile",
-                        f"Stay with me, stay a while",
-                        f"Dancing through the day and night",
-                        f"You and me, everything's alright"
+                        "Stay with me, stay a while",
+                        "Dancing through the day and night",
+                        "You and me, everything's alright"
                     ]},
                     {"section_name": "bridge", "lines": [
-                        f"When the world gets crazy and loud",
-                        f"You're the one who makes me proud",
-                        f"Hold my hand and don't let go",
-                        f"Together we'll grow and grow"
+                        "When the world gets crazy and loud",
+                        "You're the one who makes me proud",
+                        "Hold my hand and don't let go",
+                        "Together we'll grow and grow"
                     ]},
                     {"section_name": "outro", "lines": [
                         f"{theme.title()}, oh {theme.title()}",
-                        f"You make everything feel good"
+                        "You make everything feel good"
                     ]}
                 ]
             },
@@ -177,34 +175,34 @@ def _get_fallback_lyrics(topic: str, genre: str, mood: str) -> Dict:
                 "title": f"Missing {theme.title()}",
                 "lyrics": [
                     {"section_name": "verse1", "lines": [
-                        f"The rain is falling, tears drop too",
-                        f"Everything reminds me of you",
-                        f"Empty rooms and silent nights",
-                        f"Nothing feels quite right"
+                        "The rain is falling, tears drop too",
+                        "Everything reminds me of you",
+                        "Empty rooms and silent nights",
+                        "Nothing feels quite right"
                     ]},
                     {"section_name": "chorus", "lines": [
-                        f"I miss you more than words can say",
-                        f"You've been gone so many days",
+                        "I miss you more than words can say",
+                        "You've been gone so many days",
                         f"{theme.title()}, you were my light",
-                        f"Now I wander through the night"
+                        "Now I wander through the night"
                     ]},
                     {"section_name": "verse2", "lines": [
-                        f"Found your picture on the floor",
-                        f"Can't believe you're not here anymore",
-                        f"The memories playing in my head",
-                        f"I wish I'd never said what I said"
+                        "Found your picture on the floor",
+                        "Can't believe you're not here anymore",
+                        "The memories playing in my head",
+                        "I wish I'd never said what I said"
                     ]},
                     {"section_name": "chorus", "lines": [
-                        f"I miss you more than words can say",
-                        f"You've been gone so many days",
+                        "I miss you more than words can say",
+                        "You've been gone so many days",
                         f"{theme.title()}, you were my light",
-                        f"Now I wander through the night"
+                        "Now I wander through the night"
                     ]},
                     {"section_name": "bridge", "lines": [
-                        f"If I could turn back time",
-                        f"I'd make everything fine",
-                        f"But all I have are these tears to cry",
-                        f"As the days go passing by"
+                        "If I could turn back time",
+                        "I'd make everything fine",
+                        "But all I have are these tears to cry",
+                        "As the days go passing by"
                     ]}
                 ]
             }
@@ -214,28 +212,28 @@ def _get_fallback_lyrics(topic: str, genre: str, mood: str) -> Dict:
                 "title": f"Burning {theme.title()}",
                 "lyrics": [
                     {"section_name": "verse1", "lines": [
-                        f"Turn it up, feel the sound",
+                        "Turn it up, feel the sound",
                         f"{theme.title()}, shake the ground",
-                        f"We're alive, we're on fire",
-                        f"Lifting higher and higher"
+                        "We're alive, we're on fire",
+                        "Lifting higher and higher"
                     ]},
                     {"section_name": "chorus", "lines": [
                         f"WE ARE {theme.upper()}!",
-                        f"WE WILL NEVER STOP!",
-                        f"FEEL THE POWER IN YOUR SOUL",
-                        f"LET THE MUSIC TAKE CONTROL!"
+                        "WE WILL NEVER STOP!",
+                        "FEEL THE POWER IN YOUR SOUL",
+                        "LET THE MUSIC TAKE CONTROL!"
                     ]},
                     {"section_name": "verse2", "lines": [
-                        f"Breaking walls, breaking chains",
-                        f"Running wild through the plains",
-                        f"No more limits, no more rules",
-                        f"We're the leaders, we're the tools"
+                        "Breaking walls, breaking chains",
+                        "Running wild through the plains",
+                        "No more limits, no more rules",
+                        "We're the leaders, we're the tools"
                     ]},
                     {"section_name": "chorus", "lines": [
                         f"WE ARE {theme.upper()}!",
-                        f"WE WILL NEVER STOP!",
-                        f"FEEL THE POWER IN YOUR SOUL",
-                        f"LET THE MUSIC TAKE CONTROL!"
+                        "WE WILL NEVER STOP!",
+                        "FEEL THE POWER IN YOUR SOUL",
+                        "LET THE MUSIC TAKE CONTROL!"
                     ]}
                 ]
             }
@@ -254,14 +252,14 @@ def _get_fallback_lyrics(topic: str, genre: str, mood: str) -> Dict:
             "lyrics": [
                 {"section_name": "verse1", "lines": [
                     f"Thinking about {theme} today",
-                    f"It takes my breath away",
-                    f"The world is spinning round and round",
+                    "It takes my breath away",
+                    "The world is spinning round and round",
                     f"With {theme} I can be found"
                 ]},
                 {"section_name": "chorus", "lines": [
                     f"Oh {theme}, you're so fine",
-                    f"You're always on my mind",
-                    f"Sing it loud, sing it clear",
+                    "You're always on my mind",
+                    "Sing it loud, sing it clear",
                     f"{theme.title()} is why we're here"
                 ]}
             ]
@@ -279,7 +277,7 @@ def _get_fallback_lyrics(topic: str, genre: str, mood: str) -> Dict:
     }
 
 
-def improve_lyrics(lyrics: str, instruction: str = "make it more emotional") -> Dict:
+def improve_lyrics(lyrics: str, instruction: str = "make it more emotional") -> dict:
     """Improve existing lyrics using AI"""
     if OPENAI_AVAILABLE and client:
         try:
@@ -312,7 +310,7 @@ Return JSON with:
     }
 
 
-def analyze_lyrics(lyrics: str) -> Dict:
+def analyze_lyrics(lyrics: str) -> dict:
     """Analyze lyrics for various metrics"""
     words = lyrics.split()
     lines = [line.strip() for line in lyrics.split("\n") if line.strip()]
@@ -366,12 +364,12 @@ def analyze_lyrics(lyrics: str) -> Dict:
         "sentiment": sentiment,
         "positive_words": pos_count,
         "negative_words": neg_count,
-        "unique_words": len(set(w.lower() for w in words)),
+        "unique_words": len({w.lower() for w in words}),
         "readability": "easy" if len(words) < 100 else "medium" if len(words) < 200 else "complex"
     }
 
 
-def format_lyrics(lyrics_data: Dict, format_type: str = "text") -> str:
+def format_lyrics(lyrics_data: dict, format_type: str = "text") -> str:
     """Format lyrics for display or export"""
     if format_type == "text":
         lines = []
@@ -405,7 +403,7 @@ def format_lyrics(lyrics_data: Dict, format_type: str = "text") -> str:
     return json.dumps(lyrics_data, indent=2)
 
 
-def get_genres() -> List[Dict]:
+def get_genres() -> list[dict]:
     """Get available genres with descriptions"""
     return [
         {"id": "pop", "name": "Pop", "description": "Catchy, upbeat, radio-friendly"},
@@ -417,7 +415,7 @@ def get_genres() -> List[Dict]:
     ]
 
 
-def get_moods() -> List[Dict]:
+def get_moods() -> list[dict]:
     """Get available moods"""
     return [
         {"id": "happy", "name": "Happy", "emoji": "😊"},

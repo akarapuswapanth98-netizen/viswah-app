@@ -1,7 +1,7 @@
-import os
 import json
 import logging
-from typing import Dict
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -25,7 +25,7 @@ if _openai_key and _openai_key != "your-openai-api-key-here" and len(_openai_key
         logger.error(f"OpenAI init failed: {e}")
 
 
-def _parse_json_response(content: str) -> Dict:
+def _parse_json_response(content: str) -> dict:
     """Parse JSON from OpenAI response, stripping markdown code fences if present"""
     text = content.strip()
     # Remove markdown code fences
@@ -40,7 +40,7 @@ def _parse_json_response(content: str) -> Dict:
     return json.loads(text)
 
 
-def generate_lesson(topic: str, difficulty: str, instrument: str, lesson_type: str) -> Dict:
+def generate_lesson(topic: str, difficulty: str, instrument: str, lesson_type: str) -> dict:
     if OPENAI_AVAILABLE and client:
         try:
             response = client.chat.completions.create(
@@ -61,7 +61,7 @@ def generate_lesson(topic: str, difficulty: str, instrument: str, lesson_type: s
     return get_fallback_lesson(topic, difficulty, instrument)
 
 
-def get_fallback_lesson(topic: str, difficulty: str, instrument: str) -> Dict:
+def get_fallback_lesson(topic: str, difficulty: str, instrument: str) -> dict:
     lessons = {
         "major scales": {
             "title": "Understanding Major Scales",
@@ -73,9 +73,9 @@ def get_fallback_lesson(topic: str, difficulty: str, instrument: str) -> Dict:
             "tips": ["Practice ascending and descending", "Use a metronome", "Start with C Major"]
         }
     }
-    for key in lessons:
+    for key, value in lessons.items():
         if key in topic.lower():
-            return lessons[key]
+            return value
     return {
         "title": f"Introduction to {topic.title()}",
         "content": f"Welcome to this {difficulty} {instrument} lesson on {topic}.",
@@ -84,7 +84,7 @@ def get_fallback_lesson(topic: str, difficulty: str, instrument: str) -> Dict:
     }
 
 
-def generate_practice_exercise(topic: str, skill_level: str) -> Dict:
+def generate_practice_exercise(topic: str, skill_level: str) -> dict:
     if OPENAI_AVAILABLE and client:
         try:
             response = client.chat.completions.create(
