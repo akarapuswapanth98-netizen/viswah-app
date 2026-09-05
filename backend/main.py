@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from database import engine, Base, SessionLocal
 from models.schemas import SuccessResponse
-from routes import auth, courses, ai_routes, vocal_guru, speech_analysis
+from routes import auth, courses, ai_routes, vocal_guru, speech_analysis, lyrics_creator
 from seed_data import seed_database
 
 load_dotenv()
@@ -40,6 +40,7 @@ app.include_router(courses.router)
 app.include_router(ai_routes.router)
 app.include_router(vocal_guru.router)
 app.include_router(speech_analysis.router)
+app.include_router(lyrics_creator.router)
 
 
 @app.get("/", response_model=SuccessResponse, tags=["System"])

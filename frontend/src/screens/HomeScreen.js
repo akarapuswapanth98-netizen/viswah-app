@@ -84,6 +84,16 @@ const HomeScreen = ({ navigation }) => {
         <MaterialCommunityIcons name="chevron-right" size={24} color="white" />
       </TouchableOpacity>
 
+      {/* Lyrics Creator Quick Access */}
+      <TouchableOpacity onPress={() => navigation.navigate('LyricsCreator')} style={styles.lyricsBanner}>
+        <MaterialCommunityIcons name="creation" size={32} color="white" />
+        <View style={styles.guruBannerText}>
+          <Title style={styles.guruTitle}>Lyrics Creator</Title>
+          <Paragraph style={styles.guruSub}>Write songs with AI assistance</Paragraph>
+        </View>
+        <MaterialCommunityIcons name="chevron-right" size={24} color="white" />
+      </TouchableOpacity>
+
       <Searchbar placeholder="Search..." onChangeText={setSearchQuery} value={searchQuery} style={styles.search} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
@@ -127,6 +137,7 @@ const styles = StyleSheet.create({
   headerSub: { color: 'white', opacity: 0.8 },
   guruBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#9C27B0', margin: 16, marginBottom: 8, padding: 16, borderRadius: 12 },
   speechBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E91E63', marginHorizontal: 16, marginBottom: 16, padding: 16, borderRadius: 12 },
+  lyricsBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF5722', marginHorizontal: 16, marginBottom: 16, padding: 16, borderRadius: 12 },
   guruBannerText: { flex: 1, marginLeft: 12 },
   guruTitle: { color: 'white', fontSize: 18 },
   guruSub: { color: 'white', opacity: 0.8, fontSize: 12 },

@@ -33,6 +33,12 @@ export const api = {
   speechScore: `${API_URL}/api/speech/score`,
   speechAnalyzeSession: `${API_URL}/api/speech/analyze-session`,
   speechUploadAudio: `${API_URL}/api/speech/upload-audio`,
+  lyricsGenres: `${API_URL}/api/lyrics/genres`,
+  lyricsMoods: `${API_URL}/api/lyrics/moods`,
+  lyricsGenerate: `${API_URL}/api/lyrics/generate`,
+  lyricsImprove: `${API_URL}/api/lyrics/improve`,
+  lyricsAnalyze: `${API_URL}/api/lyrics/analyze`,
+  lyricsFormat: `${API_URL}/api/lyrics/format`,
 };
 
 const TOKEN_KEY = '@viswah_token';

@@ -11,6 +11,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import VocalGuruScreen from './src/screens/VocalGuruScreen';
 import SpeechAnalysisScreen from './src/screens/SpeechAnalysisScreen';
+import LyricsCreatorScreen from './src/screens/LyricsCreatorScreen';
 
 const Stack = createStackNavigator();
 
@@ -28,6 +29,7 @@ export default function App() {
           <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
           <Stack.Screen name="VocalGuru" component={VocalGuruScreen} options={{ title: 'Vocal Guru' }} />
           <Stack.Screen name="SpeechAnalysis" component={SpeechAnalysisScreen} options={{ title: 'Speech Analysis' }} />
+          <Stack.Screen name="LyricsCreator" component={LyricsCreatorScreen} options={{ title: 'Lyrics Creator' }} />
           <Stack.Screen name="Course" component={CourseScreen} options={{ title: 'Course' }} />
           <Stack.Screen name="Lesson" component={LessonScreen} options={{ title: 'Lesson' }} />
           <Stack.Screen name="Quiz" component={QuizScreen} options={{ title: 'Quiz' }} />
