@@ -138,6 +138,32 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
+        {/* Virtual Instruments */}
+        <SectionHeader title="Virtual Instruments" subtitle="Play & Create" />
+        <View style={styles.instrumentRow}>
+          <TouchableOpacity 
+            style={styles.instrumentCard}
+            onPress={() => navigation.navigate('Piano')}
+          >
+            <LinearGradient {...createGradient(COLORS.gradient.royal)} style={styles.instrumentGradient}>
+              <MaterialCommunityIcons name="piano" size={40} color={COLORS.white} />
+              <Animated.Text style={styles.instrumentTitle}>Play Piano</Animated.Text>
+              <Animated.Text style={styles.instrumentSub}>2 octaves</Animated.Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.instrumentCard}
+            onPress={() => navigation.navigate('Drums')}
+          >
+            <LinearGradient {...createGradient(['#E91E63', '#9C27B0'])} style={styles.instrumentGradient}>
+              <MaterialCommunityIcons name="drum" size={40} color={COLORS.white} />
+              <Animated.Text style={styles.instrumentTitle}>Play Drums</Animated.Text>
+              <Animated.Text style={styles.instrumentSub}>6 pads</Animated.Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
         {/* Stage Filter */}
         <SectionHeader title="Courses" subtitle="Browse by stage" />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stageScroll}>
@@ -359,6 +385,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255,255,255,0.8)',
     marginLeft: SPACING.xs,
+  },
+  instrumentRow: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
+  },
+  instrumentCard: {
+    flex: 1,
+    borderRadius: BORDER_RADIUS.xl,
+    overflow: 'hidden',
+    ...SHADOWS.medium,
+  },
+  instrumentGradient: {
+    padding: SPACING.xl,
+    alignItems: 'center',
+  },
+  instrumentTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.white,
+    marginTop: SPACING.md,
+  },
+  instrumentSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
   bottomPadding: {
     height: 100,

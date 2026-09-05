@@ -19,6 +19,8 @@ import LoginScreen from './src/screens/LoginScreen';
 import VocalGuruScreen from './src/screens/VocalGuruScreen';
 import SpeechAnalysisScreen from './src/screens/SpeechAnalysisScreen';
 import LyricsCreatorScreen from './src/screens/LyricsCreatorScreen';
+import PianoScreen from './src/screens/PianoScreen';
+import DrumsScreen from './src/screens/DrumsScreen';
 
 const Stack = createStackNavigator();
 
@@ -188,6 +190,8 @@ export default function App() {
           <Stack.Screen name="Lesson" component={LessonScreen} />
           <Stack.Screen name="Quiz" component={QuizScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Piano" component={PianoScreen} />
+          <Stack.Screen name="Drums" component={DrumsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>

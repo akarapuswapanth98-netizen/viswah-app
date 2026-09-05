@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Viswah",
+    "slug": "viswah-frontend",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#6200EE"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.viswah.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#6200EE"
+      },
+      "package": "com.viswah.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "platforms": ["ios", "android", "web"]
+  }
+}
