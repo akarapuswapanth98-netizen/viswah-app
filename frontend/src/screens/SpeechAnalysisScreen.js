@@ -5,6 +5,7 @@ import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
 import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
+import { WaveformPath, FrequencyBars, ScoreRing } from '../components/VisualEffects';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -89,6 +90,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
   const [noteDotAnimations, setNoteDotAnimations] = useState([]);
   const scoreRingAnim = useRef(new Animated.Value(0)).current;
   const [resultSlideAnims, setResultSlideAnims] = useState([]);
+  const [waveAmplitude, setWaveAmplitude] = useState(0);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -192,7 +194,9 @@ const SpeechAnalysisScreen = ({ navigation }) => {
 
     volumeIntervalRef.current = setInterval(() => {
       if (!isRecordingRef.current) return;
-      setVolume(Math.random() * 0.5 + 0.3);
+      const v = Math.random() * 0.5 + 0.3;
+      setVolume(v);
+      setWaveAmplitude(v);
     }, 150);
 
     noteAdvanceRef.current = setInterval(() => {
@@ -424,6 +428,18 @@ const SpeechAnalysisScreen = ({ navigation }) => {
       <View style={styles.recordingArea}>
         {renderVolumeMeter()}
 
+        {isRecording && (
+          <View style={styles.waveformRow}>
+            <WaveformPath amplitude={waveAmplitude} width={200} height={50} color={COLORS.primary} />
+            <FrequencyBars
+              values={Array(8).fill(0).map(() => Math.random() * 0.7 + 0.3)}
+              color={COLORS.secondary}
+              barCount={8}
+              height={50}
+            />
+          </View>
+        )}
+
         <View style={styles.micButtonWrapper}>
           <TouchableOpacity
             onPress={isRecording ? handleStopRecording : handleStartRecording}
@@ -480,29 +496,12 @@ const SpeechAnalysisScreen = ({ navigation }) => {
 
         <View style={styles.scoreCard}>
           <View style={styles.scoreRingContainer}>
-            <View style={styles.scoreRingOuter}>
-              <View style={styles.scoreRingTrack} />
-              <Animated.View
-                style={[
-                  styles.scoreRingFill,
-                  {
-                    borderColor: scoreColor,
-                    transform: [
-                      {
-                        rotate: scoreRingAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: ['0deg', '360deg'],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              />
-              <View style={styles.scoreRingInner}>
-                <Text style={[styles.scoreValue, { color: scoreColor }]}>{score}%</Text>
-                <Text style={styles.scoreLabel}>Score</Text>
-              </View>
-            </View>
+            <ScoreRing
+              score={score}
+              size={130}
+              color={scoreColor}
+              animValue={scoreRingAnim}
+            />
           </View>
         </View>
 
@@ -830,6 +829,12 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: COLORS.accent,
     borderRadius: 4,
+  },
+  waveformRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    flex: 1,
   },
   micButtonWrapper: {
     alignItems: 'center',

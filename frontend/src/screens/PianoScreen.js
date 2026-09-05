@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
 import { Tag } from '../components/UIComponents';
+import { GlowBurst, FrequencyBars } from '../components/VisualEffects';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -81,6 +82,10 @@ const PianoScreen = ({ navigation }) => {
   const [tempo, setTempo] = useState(120);
   const [currentOctave, setCurrentOctave] = useState(4);
   const [pressedKeys, setPressedKeys] = useState({});
+  const [glowActive, setGlowActive] = useState(false);
+  const [glowColor, setGlowColor] = useState('#6C63FF');
+  const [glowKey, setGlowKey] = useState(0);
+  const [freqValues, setFreqValues] = useState(Array(16).fill(0.1));
 
   const audioContext = useRef(null);
   const activeOscillators = useRef({});
@@ -176,19 +181,26 @@ const PianoScreen = ({ navigation }) => {
 
       setPressedKeys(prev => ({ ...prev, [noteName]: true }));
 
+      const colorIdx = ALL_NOTES.findIndex(n => n.note === noteName) % NOTE_COLORS.length;
+      setGlowColor(NOTE_COLORS[colorIdx]);
+      setGlowActive(true);
+      setGlowKey(prev => prev + 1);
+      setFreqValues(prev => prev.map((_, i) => Math.random() * 0.7 + 0.3));
+      setTimeout(() => setGlowActive(false), 400);
+
       if (!pressAnimations.current[noteName]) {
-        pressAnimations.current[noteName] = new Animated.Value(1);
+        pressAnimations.current[noteName] = new Animated.Value(0);
       }
       Animated.sequence([
         Animated.timing(pressAnimations.current[noteName], {
-          toValue: 0.95,
-          duration: 50,
+          toValue: 1,
+          duration: 40,
           useNativeDriver: true,
         }),
         Animated.spring(pressAnimations.current[noteName], {
-          toValue: 1,
-          tension: 200,
-          friction: 10,
+          toValue: 0,
+          tension: 300,
+          friction: 12,
           useNativeDriver: true,
         }),
       ]).start();
@@ -291,14 +303,14 @@ const PianoScreen = ({ navigation }) => {
       <View style={[styles.whiteKeysRow, { width: totalWidth }]}>
         {whiteNotes.map((n, index) => {
           const isActive = activeNote === n.note;
-          const anim = pressAnimations.current[n.note] || new Animated.Value(1);
+          const anim = pressAnimations.current[n.note] || new Animated.Value(0);
 
           return (
             <Animated.View
               key={n.note}
               style={[
                 styles.whiteKeyOuter,
-                { width: WHITE_KEY_WIDTH, transform: [{ scale: anim }] },
+                { width: WHITE_KEY_WIDTH, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 3] }) }] },
               ]}
             >
               <TouchableOpacity
@@ -344,7 +356,7 @@ const PianoScreen = ({ navigation }) => {
       <View style={[styles.blackKeysOverlay, { width: totalWidth }]}>
         {blackNotes.map((n) => {
           const isActive = activeNote === n.note;
-          const anim = pressAnimations.current[n.note] || new Animated.Value(1);
+          const anim = pressAnimations.current[n.note] || new Animated.Value(0);
 
           const noteIndex = ALL_NOTES.findIndex(note => note.note === n.note);
           let whiteIndexBefore = 0;
@@ -361,7 +373,7 @@ const PianoScreen = ({ navigation }) => {
                 {
                   left: leftPos,
                   width: BLACK_KEY_WIDTH,
-                  transform: [{ scale: anim }],
+                  transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 2] }) }],
                 },
               ]}
             >
@@ -437,7 +449,17 @@ const PianoScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Note Display */}
-        <View style={styles.noteDisplay}>
+        <View style={[
+          styles.noteDisplay,
+          activeNote && {
+            shadowColor: glowColor,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.6,
+            shadowRadius: 20,
+            elevation: 12,
+          },
+        ]}>
+          <GlowBurst active={glowActive} color={glowColor} x={100} y={20} count={8} key={glowKey} />
           <Animated.Text style={styles.currentNote}>
             {activeNote || 'Tap a key'}
           </Animated.Text>
@@ -460,6 +482,15 @@ const PianoScreen = ({ navigation }) => {
             />
           </View>
         </View>
+
+        {/* Frequency Visualizer */}
+        <FrequencyBars
+          values={freqValues}
+          color={glowColor}
+          barCount={16}
+          height={50}
+          style={{ marginBottom: SPACING.md }}
+        />
 
         {/* Piano Keyboard */}
         <View style={styles.pianoShadow}>

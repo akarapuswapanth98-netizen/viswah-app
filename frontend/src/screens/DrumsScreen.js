@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
 import { Tag } from '../components/UIComponents';
+import { GlowBurst } from '../components/VisualEffects';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PAD_SIZE = Math.min((SCREEN_WIDTH - SPACING.lg * 2 - SPACING.md) / 3 - SPACING.sm, 130);
@@ -48,6 +49,7 @@ const DrumsScreen = ({ navigation }) => {
   const [bpm, setBpm] = useState(120);
   const [currentStep, setCurrentStep] = useState(-1);
   const [selectedPattern, setSelectedPattern] = useState(null);
+  const [drumGlow, setDrumGlow] = useState({ active: false, color: '#6C63FF', key: 0 });
 
   const audioContext = useRef(null);
   const padAnimations = useRef({});
@@ -200,6 +202,8 @@ const DrumsScreen = ({ navigation }) => {
       }
 
       setActiveDrum(drum.id);
+      setDrumGlow({ active: true, color: drum.gradient[0], key: Date.now() });
+      setTimeout(() => setDrumGlow(prev => ({ ...prev, active: false })), 400);
 
       if (!padAnimations.current[drum.id]) {
         padAnimations.current[drum.id] = new Animated.Value(1);
@@ -335,6 +339,7 @@ const DrumsScreen = ({ navigation }) => {
         activeOpacity={1}
         style={styles.padWrapper}
       >
+        <GlowBurst active={isActive && drumGlow.active} color={drum.gradient[0]} x={PAD_SIZE / 2} y={PAD_SIZE / 2} count={10} key={drumGlow.key} />
         <Animated.View
           style={[
             styles.pad,
