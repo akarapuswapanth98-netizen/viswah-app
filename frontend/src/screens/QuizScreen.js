@@ -7,6 +7,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -26,7 +27,10 @@ const TIMER_DURATION = 30;
 
 const playCorrectSound = () => {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -43,7 +47,10 @@ const playCorrectSound = () => {
 
 const playWrongSound = () => {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -137,6 +144,26 @@ const QuizScreen = ({ route, navigation }) => {
     }
   }, [currentIndex, quiz]);
 
+  useEffect(() => {
+    if (showResult && quiz) {
+      const percentage = Math.round((score / quiz.questions.length) * 100);
+      Animated.parallel([
+        Animated.timing(scoreCircleAnim, {
+          toValue: percentage / 100,
+          duration: 1500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(scoreNumberAnim, {
+          toValue: percentage,
+          duration: 1500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+      ]).start();
+    }
+  }, [showResult, quiz]);
+
   const fetchQuiz = async () => {
     try {
       const res = await authFetch(api.lesson(lessonId));
@@ -219,11 +246,15 @@ const QuizScreen = ({ route, navigation }) => {
     }, 1000);
   };
 
+  const handleTimeUpRef = useRef(null);
+  handleTimeUpRef.current = { answered, currentIndex, handleAnswerSelection, handleNext };
+
   const handleTimeUp = useCallback(() => {
-    if (answered) return;
-    handleAnswerSelection(null);
-    setTimeout(() => handleNext(), 600);
-  }, [answered, currentIndex]);
+    const { answered: isAnswered, handleAnswerSelection: selectAnswer, handleNext: goNext } = handleTimeUpRef.current;
+    if (isAnswered) return;
+    selectAnswer(null);
+    setTimeout(() => goNext(), 600);
+  }, []);
 
   const handleAnswerSelection = (index) => {
     if (answered) return;
@@ -363,23 +394,6 @@ const QuizScreen = ({ route, navigation }) => {
   if (showResult) {
     const percentage = Math.round((score / quiz.questions.length) * 100);
     const isPassed = percentage >= 70;
-
-    useEffect(() => {
-      Animated.parallel([
-        Animated.timing(scoreCircleAnim, {
-          toValue: percentage / 100,
-          duration: 1500,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-        Animated.timing(scoreNumberAnim, {
-          toValue: percentage,
-          duration: 1500,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-      ]).start();
-    }, []);
 
     const animatedScore = scoreNumberAnim.interpolate({
       inputRange: [0, 100],
@@ -558,28 +572,16 @@ const QuizScreen = ({ route, navigation }) => {
 
           <View style={styles.timerCircleContainer}>
             <View style={styles.timerCircleOuter}>
-              <svg width={TIMER_SIZE} height={TIMER_SIZE} style={styles.timerSvg}>
-                <circle
-                  cx={TIMER_SIZE / 2}
-                  cy={TIMER_SIZE / 2}
-                  r={TIMER_RADIUS}
-                  stroke="rgba(255,255,255,0.2)"
-                  strokeWidth={TIMER_STROKE}
-                  fill="none"
-                />
-                <circle
-                  cx={TIMER_SIZE / 2}
-                  cy={TIMER_SIZE / 2}
-                  r={TIMER_RADIUS}
-                  stroke={timeLeft <= 10 ? COLORS.secondary : COLORS.white}
-                  strokeWidth={TIMER_STROKE}
-                  fill="none"
-                  strokeDasharray={TIMER_CIRCUMFERENCE}
-                  strokeDashoffset={timerDashOffset}
-                  strokeLinecap="round"
-                  transform={`rotate(-90 ${TIMER_SIZE / 2} ${TIMER_SIZE / 2})`}
-                />
-              </svg>
+              <View style={[styles.timerBgCircle, { width: TIMER_SIZE, height: TIMER_SIZE, borderRadius: TIMER_SIZE / 2, borderWidth: TIMER_STROKE, borderColor: 'rgba(255,255,255,0.2)' }]} />
+              <View style={[styles.timerFillCircle, { 
+                width: TIMER_SIZE, 
+                height: TIMER_SIZE, 
+                borderRadius: TIMER_SIZE / 2, 
+                borderWidth: TIMER_STROKE, 
+                borderColor: timeLeft <= 10 ? COLORS.secondary : COLORS.white,
+                borderTopColor: 'transparent',
+                transform: [{ rotate: '-90deg' }],
+              }]} />
               <View style={styles.timerTextContainer}>
                 <Animated.Text
                   style={[styles.timerText, timeLeft <= 10 && styles.timerWarning]}

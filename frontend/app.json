@@ -5,14 +5,17 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "backgroundColor": "#6200EE"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.viswah.app"
+      "bundleIdentifier": "com.viswah.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Viswah needs microphone access for speech analysis and vocal practice features."
+      }
     },
     "android": {
       "adaptiveIcon": {

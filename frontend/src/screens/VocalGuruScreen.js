@@ -160,34 +160,91 @@ const ScoreRing = ({ score }) => {
   );
 };
 
+const AnimatedStar = ({ star, count, index }) => {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (star <= count) {
+      Animated.sequence([
+        Animated.delay(index * 300),
+        Animated.spring(anim, { toValue: 1, damping: 6, stiffness: 200, useNativeDriver: true }),
+      ]).start();
+    }
+  }, []);
+
+  return (
+    <Animated.View style={[styles.star, { transform: [{ scale: anim }] }]}>
+      <MaterialCommunityIcons
+        name={star <= count ? 'star' : 'star-outline'}
+        size={40}
+        color={star <= count ? '#FFD700' : COLORS.gray300}
+      />
+    </Animated.View>
+  );
+};
+
 const StarRating = ({ count }) => {
   const stars = [1, 2, 3];
 
   return (
     <View style={styles.starsRow}>
-      {stars.map((star, index) => {
-        const anim = useRef(new Animated.Value(0)).current;
-
-        useEffect(() => {
-          if (star <= count) {
-            Animated.sequence([
-              Animated.delay(index * 300),
-              Animated.spring(anim, { toValue: 1, damping: 6, stiffness: 200, useNativeDriver: true }),
-            ]).start();
-          }
-        }, []);
-
-        return (
-          <Animated.View key={star} style={[styles.star, { transform: [{ scale: anim }] }]}>
-            <MaterialCommunityIcons
-              name={star <= count ? 'star' : 'star-outline'}
-              size={40}
-              color={star <= count ? '#FFD700' : COLORS.gray300}
-            />
-          </Animated.View>
-        );
-      })}
+      {stars.map((star, index) => (
+        <AnimatedStar key={star} star={star} count={count} index={index} />
+      ))}
     </View>
+  );
+};
+
+const GuruCard = ({ guru, index, isSelected, onSelect }) => {
+  const cardSlide = useRef(new Animated.Value(80)).current;
+  const cardFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(cardSlide, { toValue: 0, duration: 450, delay: index * 150, useNativeDriver: true }),
+      Animated.timing(cardFade, { toValue: 1, duration: 450, delay: index * 150, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => onSelect(guru)}
+    >
+      <Animated.View
+        style={[
+          styles.guruCard,
+          {
+            opacity: cardFade,
+            transform: [
+              { translateX: cardSlide },
+              { scale: isSelected ? 1.05 : 1 },
+            ],
+          },
+          isSelected && {
+            shadowColor: guru.color,
+            shadowOpacity: 0.45,
+            shadowRadius: 16,
+            elevation: 10,
+          },
+        ]}
+      >
+        <LinearGradient colors={guru.gradient} style={styles.guruCardGradient}>
+          <View style={[styles.guruAvatar, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+            <Text style={styles.guruAvatarText}>{guru.initials}</Text>
+          </View>
+          <Text style={styles.guruName}>{guru.name}</Text>
+          <View style={[styles.styleBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+            <Text style={styles.styleBadgeText}>{guru.style}</Text>
+          </View>
+          <View style={styles.specialtiesRow}>
+            {guru.specialties.map((spec) => (
+              <Tag key={spec} label={spec} color={COLORS.white} variant="light" size="small" />
+            ))}
+          </View>
+        </LinearGradient>
+      </Animated.View>
+    </TouchableOpacity>
   );
 };
 
@@ -345,60 +402,15 @@ const VocalGuruScreen = ({ navigation }) => {
               contentContainerStyle={styles.carouselContainer}
               decelerationRate="fast"
             >
-              {GURU_DATA.map((guru, index) => {
-                const isSelected = selectedGuru?.id === guru.id;
-                const cardSlide = useRef(new Animated.Value(80)).current;
-                const cardFade = useRef(new Animated.Value(0)).current;
-
-                useEffect(() => {
-                  Animated.parallel([
-                    Animated.timing(cardSlide, { toValue: 0, duration: 450, delay: index * 150, useNativeDriver: true }),
-                    Animated.timing(cardFade, { toValue: 1, duration: 450, delay: index * 150, useNativeDriver: true }),
-                  ]).start();
-                }, []);
-
-                return (
-                  <TouchableOpacity
-                    key={guru.id}
-                    activeOpacity={0.9}
-                    onPress={() => handleSelectGuru(guru)}
-                  >
-                    <Animated.View
-                      style={[
-                        styles.guruCard,
-                        {
-                          opacity: cardFade,
-                          transform: [
-                            { translateX: cardSlide },
-                            { scale: isSelected ? 1.05 : 1 },
-                          ],
-                        },
-                        isSelected && {
-                          shadowColor: guru.color,
-                          shadowOpacity: 0.45,
-                          shadowRadius: 16,
-                          elevation: 10,
-                        },
-                      ]}
-                    >
-                      <LinearGradient colors={guru.gradient} style={styles.guruCardGradient}>
-                        <View style={[styles.guruAvatar, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                          <Text style={styles.guruAvatarText}>{guru.initials}</Text>
-                        </View>
-                        <Text style={styles.guruName}>{guru.name}</Text>
-                        <View style={[styles.styleBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                          <Text style={styles.styleBadgeText}>{guru.style}</Text>
-                        </View>
-                        <View style={styles.specialtiesRow}>
-                          {guru.specialties.map((spec) => (
-                            <Tag key={spec} label={spec} color={COLORS.white} variant="light" size="small" />
-                          ))}
-                        </View>
-                      </LinearGradient>
-                    </Animated.View>
-                  </TouchableOpacity>
-                );
-              })}
+              {GURU_DATA.map((guru, index) => (
+                <GuruCard
+                  key={guru.id}
+                  guru={guru}
+                  index={index}
+                  isSelected={selectedGuru?.id === guru.id}
+                  onSelect={handleSelectGuru}
+                />
+              ))}
             </ScrollView>
 
             {/* TOPICS GRID */}

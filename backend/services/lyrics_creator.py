@@ -75,7 +75,8 @@ def _pair_rhyme(lines: List[str], i: int, j: int) -> bool:
         return False
     word1 = lines[i].strip().split()[-1].lower() if lines[i].strip() else ""
     word2 = lines[j].strip().split()[-1].lower() if lines[j].strip() else ""
-    return word1[-2:] == word2[-2:] if len(word1) > 1 and len(word2) > 1 else False
+    # Fix #19: Compare last 3 chars for better rhyme accuracy
+    return word1[-3:] == word2[-3:] if len(word1) > 2 and len(word2) > 2 else False
 
 
 def _parse_json_response(content: str) -> Dict:

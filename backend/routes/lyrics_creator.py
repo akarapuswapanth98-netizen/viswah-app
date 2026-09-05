@@ -64,9 +64,7 @@ def list_moods():
 )
 def generate_new_lyrics(request: LyricsGenerateRequest):
     """Generate lyrics using AI"""
-    if not request.topic:
-        raise HTTPException(status_code=400, detail="Topic is required")
-
+    # Pydantic already validates topic via Field(min_length=2, max_length=200)
     result = generate_lyrics(
         topic=request.topic,
         genre=request.genre,
@@ -85,9 +83,7 @@ def generate_new_lyrics(request: LyricsGenerateRequest):
 )
 def improve_existing_lyrics(request: LyricsImproveRequest):
     """Improve existing lyrics using AI"""
-    if not request.lyrics:
-        raise HTTPException(status_code=400, detail="Lyrics are required")
-
+    # Pydantic already validates lyrics via Field(min_length=10)
     result = improve_lyrics(
         lyrics=request.lyrics,
         instruction=request.instruction
@@ -104,9 +100,7 @@ def improve_existing_lyrics(request: LyricsImproveRequest):
 )
 def analyze_lyrics_text(request: LyricsAnalyzeRequest):
     """Analyze lyrics for various metrics"""
-    if not request.lyrics:
-        raise HTTPException(status_code=400, detail="Lyrics are required")
-
+    # Pydantic already validates lyrics via Field(min_length=5)
     result = analyze_lyrics(request.lyrics)
     return result
 
@@ -120,8 +114,6 @@ def analyze_lyrics_text(request: LyricsAnalyzeRequest):
 )
 def format_lyrics_text(request: LyricsFormatRequest):
     """Format lyrics for display or export"""
-    if not request.lyrics_data:
-        raise HTTPException(status_code=400, detail="Lyrics data is required")
-
+    # lyrics_data is a required dict field in Pydantic - no manual check needed
     formatted = format_lyrics(request.lyrics_data, request.format_type)
     return {"formatted": formatted, "format": request.format_type}

@@ -13,7 +13,8 @@ _openai_key = os.getenv("OPENAI_API_KEY", "")
 OPENAI_AVAILABLE = False
 client = None
 
-if _openai_key and _openai_key != "your-openai-api-key-here" and len(_openai_key) > 10:
+# Fix #20: Enforce minimum key length of 20 chars
+if _openai_key and _openai_key != "your-openai-api-key-here" and len(_openai_key) >= 20:
     try:
         from openai import OpenAI
         client = OpenAI(api_key=_openai_key)

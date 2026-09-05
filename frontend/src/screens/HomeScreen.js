@@ -78,12 +78,18 @@ const HomeScreen = ({ navigation }) => {
     new Animated.Value(0.4),
     new Animated.Value(0.5),
   ]).current;
+  const waveAnimRefs = useRef([]);
   const pullRefreshAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     fetchData();
     startWaveAnimations();
     startStaggeredEntrance();
+    return () => {
+      waveAnimRefs.current.forEach((anim) => {
+        if (anim) anim.stop();
+      });
+    };
   }, []);
 
   const fetchData = async () => {
@@ -128,8 +134,8 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const startWaveAnimations = () => {
-    waveAnimations.forEach((anim, index) => {
-      Animated.loop(
+    waveAnimRefs.current = waveAnimations.map((anim, index) => {
+      const loopAnim = Animated.loop(
         Animated.sequence([
           Animated.timing(anim, {
             toValue: 1,
@@ -142,7 +148,9 @@ const HomeScreen = ({ navigation }) => {
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      loopAnim.start();
+      return loopAnim;
     });
   };
 
@@ -203,7 +211,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
           <TouchableOpacity
             style={styles.notificationButton}
-            onPress={() => navigation.navigate('Notifications')}
+            onPress={() => {}}
           >
             <MaterialCommunityIcons name="bell-outline" size={22} color={COLORS.gray700} />
             {notificationCount > 0 && (

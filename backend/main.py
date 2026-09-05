@@ -1,9 +1,12 @@
 # Viswah Backend - FastAPI Main
 
 import os
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import text
 from database import engine, Base, SessionLocal
@@ -13,22 +16,33 @@ from seed_data import seed_database
 
 load_dotenv()
 
-Base.metadata.create_all(bind=engine)
+# Fix #1: Only run SQLite PRAGMA on SQLite dialects
+if engine.url.drivername == "sqlite":
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(lessons)"))
+            columns = [row[1] for row in result]
+            if "quiz_questions" not in columns:
+                # Fix #2: Wrap ALTER TABLE in try/except for concurrent/safe migration
+                try:
+                    conn.execute(text("ALTER TABLE lessons ADD COLUMN quiz_questions TEXT"))
+                    conn.commit()
+                except Exception:
+                    pass  # Column may already exist from concurrent startup
+    except Exception as e:
+        logger.warning(f"SQLite migration check failed: {e}")
+else:
+    Base.metadata.create_all(bind=engine)
 
-# Auto-migrate: add quiz_questions column if missing (for existing DBs)
-with engine.connect() as conn:
-    result = conn.execute(text("PRAGMA table_info(lessons)"))
-    columns = [row[1] for row in result]
-    if "quiz_questions" not in columns:
-        conn.execute(text("ALTER TABLE lessons ADD COLUMN quiz_questions TEXT"))
-        conn.commit()
-
-db = SessionLocal()
+# Fix #3: Wrap seed in try/except so failure doesn't kill the app
 try:
-    seed_database(db)
-finally:
-    db.close()
-db = None  # Release reference
+    db = SessionLocal()
+    try:
+        seed_database(db)
+    finally:
+        db.close()
+except Exception as e:
+    logger.error(f"Database seeding failed: {e}")
 
 app = FastAPI(
     title="Viswah Music Learning API",
@@ -36,8 +50,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Fix #4: Secure CORS from environment
-cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")]
+# Fix #4: Validate CORS_ORIGINS, default to empty list if empty string
+cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:3000").strip()
+cors_origins = [origin.strip() for origin in cors_raw.split(",") if origin.strip()] if cors_raw else []
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,

@@ -163,8 +163,17 @@ def get_topics(
     instrument_val = instrument.value
     difficulty_val = difficulty.value
 
+    # Fix #17: Use .get() with fallback to avoid KeyError
+    instrument_topics = topics.get(instrument_val)
+    if not instrument_topics:
+        raise HTTPException(status_code=422, detail=f"No topics found for instrument: {instrument_val}")
+
+    topic_list = instrument_topics.get(difficulty_val)
+    if not topic_list:
+        raise HTTPException(status_code=422, detail=f"No topics found for difficulty: {difficulty_val}")
+
     return TopicsResponse(
         instrument=instrument_val,
         difficulty=difficulty_val,
-        topics=topics[instrument_val][difficulty_val]
+        topics=topic_list
     )

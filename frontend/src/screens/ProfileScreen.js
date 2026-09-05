@@ -314,19 +314,6 @@ const ProfileScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.settingRow}>
-            <View style={[styles.settingIconWrap, { backgroundColor: `${COLORS.gray700}18` }]}>
-              <MaterialCommunityIcons name="theme-light-dark" size={20} color={COLORS.gray700} />
-            </View>
-            <Animated.Text style={styles.settingLabel}>Dark Mode</Animated.Text>
-            <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{ false: COLORS.gray300, true: `${COLORS.primary}60` }}
-              thumbColor={darkMode ? COLORS.primary : COLORS.gray400}
-            />
-          </View>
-
           <TouchableOpacity style={styles.settingRow}>
             <View style={[styles.settingIconWrap, { backgroundColor: `${COLORS.success}18` }]}>
               <MaterialCommunityIcons name="information-outline" size={20} color={COLORS.success} />

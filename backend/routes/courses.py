@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 
 from database import get_db
@@ -94,21 +95,24 @@ def create_progress(
     ).first()
 
     if existing:
-        # Only update if new values are better or completing
+        if existing.completed and not progress.completed:
+            # Fix #15: Return info that lesson is already completed, don't silently ignore
+            return existing
+
         if progress.completed:
             existing.completed = True
             existing.score = max(existing.score, progress.score)
             existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
             if not existing.completed_at:
                 existing.completed_at = datetime.now(timezone.utc)
-        elif not existing.completed:
-            # Only update if not already completed
+        else:
             existing.score = progress.score
             existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
         db.commit()
         db.refresh(existing)
         return existing
 
+    # Fix #16: Use try/except to handle race condition on concurrent creation
     new_progress = Progress(
         user_id=current_user.id,
         lesson_id=progress.lesson_id,
@@ -117,9 +121,31 @@ def create_progress(
         time_spent_minutes=progress.time_spent_minutes,
         completed_at=datetime.now(timezone.utc) if progress.completed else None
     )
-    db.add(new_progress)
-    db.commit()
-    db.refresh(new_progress)
+    try:
+        db.add(new_progress)
+        db.commit()
+        db.refresh(new_progress)
+    except IntegrityError:
+        db.rollback()
+        # Race condition: another request created this progress, fetch and update
+        existing = db.query(Progress).filter(
+            Progress.user_id == current_user.id,
+            Progress.lesson_id == progress.lesson_id
+        ).first()
+        if existing:
+            if progress.completed:
+                existing.completed = True
+                existing.score = max(existing.score, progress.score)
+                existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
+                if not existing.completed_at:
+                    existing.completed_at = datetime.now(timezone.utc)
+            else:
+                existing.score = progress.score
+                existing.time_spent_minutes = existing.time_spent_minutes + progress.time_spent_minutes
+            db.commit()
+            db.refresh(existing)
+            return existing
+        raise HTTPException(status_code=500, detail="Failed to create progress")
     return new_progress
 
 

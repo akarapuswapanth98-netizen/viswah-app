@@ -7,6 +7,7 @@ import {
   Animated,
   Dimensions,
   PanResponder,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -125,8 +126,12 @@ const PianoScreen = ({ navigation }) => {
 
   const getAudioContext = () => {
     if (!audioContext.current) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      audioContext.current = new AudioContext();
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioContext.current = new AudioContextClass();
+        }
+      }
     }
     return audioContext.current;
   };

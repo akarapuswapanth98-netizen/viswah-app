@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -127,7 +128,7 @@ const LessonScreen = ({ route, navigation }) => {
             key={index}
             style={[styles.contentHeader, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
           >
-            <View style={styles.contentHeaderText}>{block.text}</View>
+            <Text style={styles.contentHeaderText}>{block.text}</Text>
           </Animated.View>
         );
 
@@ -137,7 +138,7 @@ const LessonScreen = ({ route, navigation }) => {
             key={index}
             style={[styles.contentParagraph, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
           >
-            <View style={styles.contentParagraphText}>{block.text}</View>
+            <Text style={styles.contentParagraphText}>{block.text}</Text>
           </Animated.View>
         );
 
@@ -150,7 +151,7 @@ const LessonScreen = ({ route, navigation }) => {
             {(block.items || []).map((item, i) => (
               <View key={i} style={styles.listItem}>
                 <View style={[styles.listBullet, { backgroundColor: COLORS.primary }]} />
-                <View style={styles.listItemText}>{item}</View>
+                <Text style={styles.listItemText}>{item}</Text>
               </View>
             ))}
           </Animated.View>
@@ -162,7 +163,7 @@ const LessonScreen = ({ route, navigation }) => {
             key={index}
             style={[styles.contentBold, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
           >
-            <View style={styles.contentBoldText}>{block.text}</View>
+            <Text style={styles.contentBoldText}>{block.text}</Text>
           </Animated.View>
         );
 
@@ -180,7 +181,7 @@ const LessonScreen = ({ route, navigation }) => {
             key={index}
             style={[styles.contentParagraph, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
           >
-            <View style={styles.contentParagraphText}>{block.text || block}</View>
+            <Text style={styles.contentParagraphText}>{block.text || block}</Text>
           </Animated.View>
         );
     }
@@ -191,7 +192,7 @@ const LessonScreen = ({ route, navigation }) => {
       return (
         <View style={styles.emptyContent}>
           <MaterialCommunityIcons name="book-open-variant" size={48} color={COLORS.gray300} />
-          <View style={styles.emptyContentText}>No content available for this lesson yet.</View>
+          <Text style={styles.emptyContentText}>No content available for this lesson yet.</Text>
         </View>
       );
     }
@@ -210,7 +211,7 @@ const LessonScreen = ({ route, navigation }) => {
     return (
       <View style={styles.emptyContent}>
         <MaterialCommunityIcons name="book-open-variant" size={48} color={COLORS.gray300} />
-        <View style={styles.emptyContentText}>No content available for this lesson yet.</View>
+        <Text style={styles.emptyContentText}>No content available for this lesson yet.</Text>
       </View>
     );
   };
@@ -249,9 +250,9 @@ const LessonScreen = ({ route, navigation }) => {
                 size={20}
                 color={COLORS.white}
               />
-              <View style={styles.markCompleteText}>
+              <Text style={styles.markCompleteText}>
                 {isCompleted ? 'Completed' : 'Mark Complete'}
-              </View>
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
@@ -279,7 +280,7 @@ const LessonScreen = ({ route, navigation }) => {
         >
           <View style={styles.quizButtonInner}>
             <MaterialCommunityIcons name="frequently-asked-questions" size={18} color={COLORS.primary} />
-            <View style={styles.quizButtonText}>Quiz</View>
+            <Text style={styles.quizButtonText}>Quiz</Text>
           </View>
         </TouchableOpacity>
 
@@ -320,15 +321,15 @@ const LessonScreen = ({ route, navigation }) => {
               <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.white} />
             </TouchableOpacity>
 
-            <View style={styles.headerInfo}>
-              <View style={styles.headerTitleText}>{lesson?.title || 'Lesson'}</View>
-              <View style={styles.headerSubText}>{courseName}</View>
-            </View>
+              <View style={styles.headerInfo}>
+                <Text style={styles.headerTitleText}>{lesson?.title || 'Lesson'}</Text>
+                <Text style={styles.headerSubText}>{courseName}</Text>
+              </View>
 
             {lesson?.duration && (
               <View style={styles.durationBadge}>
                 <MaterialCommunityIcons name="clock-outline" size={14} color={COLORS.white} />
-                <View style={styles.durationText}>{lesson.duration}m</View>
+                <Text style={styles.durationText}>{lesson.duration}m</Text>
               </View>
             )}
 
@@ -369,12 +370,19 @@ const LessonScreen = ({ route, navigation }) => {
                 { color: isCompleted ? COLORS.success : COLORS.primary },
               ]}
             >
-              {isCompleted ? 'Lesson Completed' : 'In Progress'}
+              <Text
+                style={[
+                  styles.statusBannerText,
+                  { color: isCompleted ? COLORS.success : COLORS.primary },
+                ]}
+              >
+                {isCompleted ? 'Lesson Completed' : 'In Progress'}
+              </Text>
             </View>
             {isCompleted && progress?.score && (
               <View style={styles.scoreInline}>
                 <MaterialCommunityIcons name="star" size={14} color={COLORS.warning} />
-                <View style={styles.scoreInlineText}>{progress.score}%</View>
+                <Text style={styles.scoreInlineText}>{progress.score}%</Text>
               </View>
             )}
           </View>
@@ -384,7 +392,7 @@ const LessonScreen = ({ route, navigation }) => {
         <Animated.View style={[styles.contentCard, { opacity: contentFade }]}>
           <View style={styles.contentCardHeader}>
             <MaterialCommunityIcons name="book-open-variant" size={22} color={COLORS.primary} />
-            <View style={styles.contentCardTitle}>Lesson Content</View>
+            <Text style={styles.contentCardTitle}>Lesson Content</Text>
           </View>
 
           {renderLessonContent()}
@@ -400,10 +408,10 @@ const LessonScreen = ({ route, navigation }) => {
             >
               <View style={styles.quizActionInner}>
                 <MaterialCommunityIcons name="frequently-asked-questions" size={24} color={COLORS.secondary} />
-                <View style={styles.quizActionInfo}>
-                  <View style={styles.quizActionTitle}>Take the Quiz</View>
-                  <View style={styles.quizActionDesc}>Test your knowledge from this lesson</View>
-                </View>
+              <View style={styles.quizActionInfo}>
+                <Text style={styles.quizActionTitle}>Take the Quiz</Text>
+                <Text style={styles.quizActionDesc}>Test your knowledge from this lesson</Text>
+              </View>
                 <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.gray400} />
               </View>
             </TouchableOpacity>

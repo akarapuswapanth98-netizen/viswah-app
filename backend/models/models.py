@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime, timezone
@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint("level IN ('beginner', 'intermediate', 'advanced')", name='ck_user_level'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True)
@@ -20,6 +23,9 @@ class User(Base):
 
 class Course(Base):
     __tablename__ = "courses"
+    __table_args__ = (
+        CheckConstraint("difficulty IN ('beginner', 'intermediate', 'advanced')", name='ck_course_difficulty'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(100))
@@ -37,7 +43,7 @@ class Lesson(Base):
     __tablename__ = "lessons"
 
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, ForeignKey("courses.id"))
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     title = Column(String(100))
     content = Column(Text)
     audio_url = Column(String(200))
@@ -53,10 +59,14 @@ class Lesson(Base):
 
 class Progress(Base):
     __tablename__ = "progress"
+    __table_args__ = (
+        UniqueConstraint('user_id', 'lesson_id', name='uq_progress_user_lesson'),
+        CheckConstraint("completed IN (0, 1)", name='ck_progress_completed'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    lesson_id = Column(Integer, ForeignKey("lessons.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
     completed = Column(Boolean, default=False)
     score = Column(Float, default=0.0)
     time_spent_minutes = Column(Integer, default=0)
@@ -68,11 +78,13 @@ class Progress(Base):
 
 class UserCourse(Base):
     __tablename__ = "user_courses"
-    __table_args__ = (UniqueConstraint('user_id', 'course_id', name='uq_user_course'),)
+    __table_args__ = (
+        UniqueConstraint('user_id', 'course_id', name='uq_user_course'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    course_id = Column(Integer, ForeignKey("courses.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     enrolled_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="courses")

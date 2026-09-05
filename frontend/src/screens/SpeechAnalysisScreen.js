@@ -99,6 +99,8 @@ const SpeechAnalysisScreen = ({ navigation }) => {
   const noteAdvanceRef = useRef(null);
   const volumeIntervalRef = useRef(null);
 
+  const currentNoteIndexRef = useRef(0);
+
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     return () => {
@@ -128,14 +130,17 @@ const SpeechAnalysisScreen = ({ navigation }) => {
     }
   }, [noteDotAnimations]);
 
+  const noteGlowLoop = useRef(null);
+
   const animateNoteGlow = useCallback(() => {
     noteGlowAnim.setValue(0);
-    Animated.loop(
+    noteGlowLoop.current = Animated.loop(
       Animated.sequence([
         Animated.timing(noteGlowAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
         Animated.timing(noteGlowAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
       ])
-    ).start();
+    );
+    noteGlowLoop.current.start();
   }, [noteGlowAnim]);
 
   const startPulse = () => {
@@ -156,6 +161,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
     if (!selectedExercise) return;
     setIsRecording(true);
     isRecordingRef.current = true;
+    currentNoteIndexRef.current = 0;
     setResults(null);
     setElapsedTime(0);
     setCurrentNoteIndex(0);
@@ -175,7 +181,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
 
     pitchIntervalRef.current = setInterval(() => {
       if (!isRecordingRef.current) return;
-      const targetNote = selectedExercise.notes[currentNoteIndex] || 'C4';
+      const targetNote = selectedExercise.notes[currentNoteIndexRef.current] || 'C4';
       const baseFreq = NOTE_FREQUENCIES[targetNote] || 261.63;
       const jitter = (Math.random() - 0.5) * 40;
       const freq = Math.max(100, baseFreq + jitter);
@@ -191,6 +197,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
     noteAdvanceRef.current = setInterval(() => {
       if (!isRecordingRef.current) return;
       setCurrentNoteIndex((prev) => {
+        currentNoteIndexRef.current = prev;
         if (prev < selectedExercise.notes.length - 1) {
           const next = prev + 1;
           setNoteDots((dots) => {
@@ -218,6 +225,10 @@ const SpeechAnalysisScreen = ({ navigation }) => {
     setIsRecording(false);
     isRecordingRef.current = false;
     stopPulse();
+    if (noteGlowLoop.current) {
+      noteGlowLoop.current.stop();
+      noteGlowLoop.current = null;
+    }
     noteGlowAnim.stopAnimation();
     noteGlowAnim.setValue(0);
     if (timerRef.current) clearInterval(timerRef.current);

@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Text,
   StatusBar,
-  SafeAreaView,
   Platform,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -17,9 +16,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import ErrorBoundary from './src/components/ErrorBoundary';
 import { COLORS, createGradient, BORDER_RADIUS, SHADOWS } from './src/theme';
 
-import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import CourseScreen from './src/screens/CourseScreen';
 import LessonScreen from './src/screens/LessonScreen';
@@ -819,20 +818,19 @@ const forSlideFade = ({ current, next, layouts }) => ({
 // MAIN APP
 // ─────────────────────────────────────────────
 export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppInner />
+    </ErrorBoundary>
+  );
+}
+
+function AppInner() {
   const [appState, setAppState] = useState('splash'); // 'splash' | 'onboarding' | 'main'
 
   useEffect(() => {
-    checkFirstLaunch();
+    // Initialization handled by splash screen
   }, []);
-
-  const checkFirstLaunch = async () => {
-    try {
-      const hasLaunched = await AsyncStorage.getItem('hasLaunched');
-      // We don't set main here - splash will finish first
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const handleSplashFinish = async () => {
     try {

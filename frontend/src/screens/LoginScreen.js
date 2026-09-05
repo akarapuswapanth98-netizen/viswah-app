@@ -32,13 +32,17 @@ const MUSIC_NOTES = Array.from({ length: 12 }, (_, i) => ({
 const FloatingNote = ({ symbol, x, delay, duration, size }) => {
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef(null);
 
   useEffect(() => {
+    let isCancelled = false;
+
     const animate = () => {
+      if (isCancelled) return;
       translateY.setValue(Dimensions.get('window').height + 50);
       opacity.setValue(0);
 
-      Animated.sequence([
+      animationRef.current = Animated.sequence([
         Animated.delay(delay),
         Animated.parallel([
           Animated.timing(translateY, {
@@ -52,10 +56,20 @@ const FloatingNote = ({ symbol, x, delay, duration, size }) => {
             Animated.timing(opacity, { toValue: 0, duration: 800, useNativeDriver: true }),
           ]),
         ]),
-      ]).start(() => animate());
+      ]);
+      animationRef.current.start(() => {
+        if (!isCancelled) animate();
+      });
     };
 
     animate();
+
+    return () => {
+      isCancelled = true;
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
+    };
   }, []);
 
   return (

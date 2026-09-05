@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, BORDER_RADIUS, SHADOWS, SPACING, createGradient } from '../theme';
@@ -30,7 +30,7 @@ export const GradientButton = ({
         <MaterialCommunityIcons name={icon} size={20} color={COLORS.white} />
       ) : null}
       <View style={[styles.buttonTextContainer, icon && { marginLeft: SPACING.sm }]}>
-        <View style={styles.buttonText}>{title}</View>
+        <Text style={styles.buttonText}>{title}</Text>
       </View>
     </LinearGradient>
   </TouchableOpacity>
@@ -66,12 +66,12 @@ export const GradientCard = ({
 export const SectionHeader = ({ title, subtitle, action, onAction }) => (
   <View style={styles.sectionHeader}>
     <View style={styles.sectionHeaderLeft}>
-      <View style={styles.sectionTitle}>{title}</View>
-      {subtitle && <View style={styles.sectionSubtitle}>{subtitle}</View>}
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {subtitle && <Text style={styles.sectionSubtitle}>{subtitle}</Text>}
     </View>
     {action && (
       <TouchableOpacity onPress={onAction} style={styles.sectionAction}>
-        <View style={styles.sectionActionText}>{action}</View>
+        <Text style={styles.sectionActionText}>{action}</Text>
         <MaterialCommunityIcons name="chevron-right" size={16} color={COLORS.primary} />
       </TouchableOpacity>
     )}
@@ -121,7 +121,7 @@ export const Badge = ({
   
   return (
     <View style={[styles.badge, { backgroundColor: color, width: currentSize.width, height: currentSize.height }, style]}>
-      <View style={[styles.badgeText, { fontSize: currentSize.fontSize }]}>{count > 99 ? '99+' : count}</View>
+      <Text style={[styles.badgeText, { fontSize: currentSize.fontSize }]}>{count > 99 ? '99+' : count}</Text>
     </View>
   );
 };
@@ -148,7 +148,7 @@ export const Tag = ({
   
   return (
     <View style={[styles.tag, variantStyles[variant], sizeStyles[size], style]}>
-      <View style={[styles.tagText, { color: variant === 'filled' ? COLORS.white : color }]}>{label}</View>
+      <Text style={[styles.tagText, { color: variant === 'filled' ? COLORS.white : color }]}>{label}</Text>
     </View>
   );
 };
@@ -164,7 +164,7 @@ export const ProgressBar = ({
 }) => (
   <View style={[styles.progressContainer, style]}>
     {showLabel && (
-      <View style={styles.progressLabel}>{Math.round(progress * 100)}%</View>
+      <Text style={styles.progressLabel}>{Math.round(progress * 100)}%</Text>
     )}
     <View style={[styles.progressBar, { height, backgroundColor }]}>
       <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: color }]} />

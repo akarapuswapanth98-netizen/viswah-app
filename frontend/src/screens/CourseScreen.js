@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -259,9 +260,9 @@ const CourseScreen = ({ route, navigation }) => {
             {Math.round(progressPercent * 100)}%
           </Animated.Text>
           <View style={styles.ringLabel}>
-            <View style={[styles.ringLabelText, { color: COLORS.gray500 }]}>
+            <Text style={[styles.ringLabelText, { color: COLORS.gray500 }]}>
               {completedCount}/{totalCount}
-            </View>
+            </Text>
           </View>
         </View>
       </View>
@@ -339,7 +340,9 @@ const CourseScreen = ({ route, navigation }) => {
                 <MaterialCommunityIcons name="lock" size={16} color={COLORS.gray500} />
               ) : (
                 <View style={[styles.lessonNumberText, isCurrent && { color: COLORS.white }]}>
-                  {index + 1}
+                  <Text style={[styles.lessonNumberText, isCurrent && { color: COLORS.white }]}>
+                    {index + 1}
+                  </Text>
                 </View>
               )}
             </View>
@@ -359,7 +362,16 @@ const CourseScreen = ({ route, navigation }) => {
                     isLocked && { color: COLORS.gray400 },
                   ]}
                 >
-                  {lesson.title}
+                  <Text
+                    style={[
+                      styles.lessonTitleText,
+                      isCompleted && { color: COLORS.gray500 },
+                      isCurrent && { color: COLORS.black },
+                      isLocked && { color: COLORS.gray400 },
+                    ]}
+                  >
+                    {lesson.title}
+                  </Text>
                 </View>
                 {isCurrent && (
                   <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
@@ -380,7 +392,14 @@ const CourseScreen = ({ route, navigation }) => {
                     { color: isLocked ? COLORS.gray400 : COLORS.gray500 },
                   ]}
                 >
-                  {lesson.content_type || 'Lesson'}
+                  <Text
+                    style={[
+                      styles.lessonTypeText,
+                      { color: isLocked ? COLORS.gray400 : COLORS.gray500 },
+                    ]}
+                  >
+                    {lesson.content_type || 'Lesson'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -411,21 +430,21 @@ const CourseScreen = ({ route, navigation }) => {
         <View style={styles.enrollCard}>
           <View style={styles.enrollHeader}>
             <MaterialCommunityIcons name="information-outline" size={24} color={stageColor} />
-            <View style={styles.enrollHeaderText}>
-              <View style={styles.enrollTitle}>Course Overview</View>
-            </View>
+              <View style={styles.enrollHeaderText}>
+                <Text style={styles.enrollTitle}>Course Overview</Text>
+              </View>
           </View>
 
-          <View style={styles.enrollDescText}>
+          <Text style={styles.enrollDescText}>
             {course?.description || 'Start your musical journey with this comprehensive course.'}
-          </View>
+          </Text>
 
           <View style={styles.learnSection}>
-            <View style={styles.learnTitle}>What you'll learn</View>
+            <Text style={styles.learnTitle}>What you'll learn</Text>
             {learnPoints.map((point, i) => (
               <View key={i} style={styles.learnItem}>
                 <MaterialCommunityIcons name="check-circle" size={18} color={stageColor} />
-                <View style={styles.learnPointText}>{point}</View>
+                <Text style={styles.learnPointText}>{point}</Text>
               </View>
             ))}
           </View>
@@ -481,10 +500,10 @@ const CourseScreen = ({ route, navigation }) => {
                 size={28}
                 color="rgba(255,255,255,0.9)"
               />
-              <View style={styles.heroTitleText}>{course?.title || 'Course'}</View>
+              <Text style={styles.heroTitleText}>{course?.title || 'Course'}</Text>
             </View>
 
-            <View style={styles.heroDescText}>{course?.description}</View>
+            <Text style={styles.heroDescText}>{course?.description}</Text>
 
             {/* Stats Row */}
             <View style={styles.statsRow}>
@@ -510,13 +529,13 @@ const CourseScreen = ({ route, navigation }) => {
                   size={16}
                   color={COLORS.white}
                 />
-                <View style={styles.statChipText}>
+                <Text style={styles.statChipText}>
                   {course?.instrument?.charAt(0).toUpperCase() + (course?.instrument?.slice(1) || '')}
-                </View>
+                </Text>
               </View>
               <View style={styles.statChip}>
                 <MaterialCommunityIcons name="book-open-variant" size={16} color={COLORS.white} />
-                <View style={styles.statChipText}>{totalCount} lessons</View>
+                <Text style={styles.statChipText}>{totalCount} lessons</Text>
               </View>
             </View>
           </View>
@@ -534,18 +553,18 @@ const CourseScreen = ({ route, navigation }) => {
           <Animated.View style={[styles.progressSection, { opacity: fadeAnim }]}>
             <View style={styles.progressCard}>
               <View style={styles.progressCardHeader}>
-                <View style={styles.progressCardTitle}>Your Progress</View>
-                <View style={[styles.progressCardPercent, { color: stageColor }]}>
+                <Text style={styles.progressCardTitle}>Your Progress</Text>
+                <Text style={[styles.progressCardPercent, { color: stageColor }]}>
                   {Math.round(progressPercent * 100)}%
-                </View>
+                </Text>
               </View>
 
               <View style={styles.progressCardBody}>
                 {renderProgressRing()}
                 <View style={styles.progressDetails}>
-                  <View style={styles.progressLessonsText}>
-                    {completedCount} of {totalCount} lessons complete
-                  </View>
+              <Text style={styles.progressLessonsText}>
+                {completedCount} of {totalCount} lessons complete
+              </Text>
                   <ProgressBar
                     progress={progressPercent}
                     height={8}
@@ -582,8 +601,8 @@ const CourseScreen = ({ route, navigation }) => {
         {/* Lesson List */}
         <View style={styles.lessonSection}>
           <View style={styles.lessonSectionHeader}>
-            <View style={styles.lessonSectionTitle}>Lessons</View>
-            <View style={styles.lessonSectionCount}>{totalCount} total</View>
+            <Text style={styles.lessonSectionTitle}>Lessons</Text>
+            <Text style={styles.lessonSectionCount}>{totalCount} total</Text>
           </View>
 
           {lessons.map((lesson, index) => renderLessonCard(lesson, index))}

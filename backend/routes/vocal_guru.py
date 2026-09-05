@@ -110,6 +110,15 @@ def speak_text(request: dict):
     guru_id = request.get("guru_id", "classical")
     if not text:
         raise HTTPException(status_code=400, detail="Text is required")
+
+    # Fix #11: Validate text length and guru_id
+    if len(text) > 5000:
+        raise HTTPException(status_code=400, detail="Text too long. Maximum 5000 characters allowed.")
+
+    valid_guru_ids = ["classical", "contemporary", "carnatic"]
+    if guru_id not in valid_guru_ids:
+        raise HTTPException(status_code=400, detail=f"Invalid guru_id. Must be one of: {', '.join(valid_guru_ids)}")
+
     audio_path = generate_speech(text, guru_id)
     if not audio_path:
         raise HTTPException(

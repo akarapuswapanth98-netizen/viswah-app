@@ -6,6 +6,7 @@ import {
   Animated,
   Dimensions,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -80,7 +81,12 @@ const DrumsScreen = ({ navigation }) => {
 
   const getAudioContext = () => {
     if (!audioContext.current) {
-      audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioContext.current = new AudioContextClass();
+        }
+      }
     }
     return audioContext.current;
   };
@@ -292,7 +298,6 @@ const DrumsScreen = ({ navigation }) => {
     if (patternInterval.current) {
       clearInterval(patternInterval.current);
       patternInterval.current = null;
-      setPatternStep(-1);
       setCurrentStep(-1);
       setSelectedPattern(null);
       return;
