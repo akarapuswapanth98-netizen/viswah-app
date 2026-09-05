@@ -3,6 +3,7 @@
 import os
 import logging
 import tempfile
+import time
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
 
@@ -20,8 +21,8 @@ try:
     if ELEVENLABS_API_KEY and len(ELEVENLABS_API_KEY) > 10:
         elevenlabs.set_api_key(ELEVENLABS_API_KEY)
         ELEVENLABS_AVAILABLE = True
-except ImportError:
-    logger.info("ElevenLabs not installed")
+except (ImportError, AttributeError, Exception) as e:
+    logger.info(f"ElevenLabs not available: {e}")
 
 try:
     from gtts import gTTS
@@ -138,7 +139,6 @@ def generate_speech(text: str, guru_id: str = "classical") -> Optional[str]:
     Returns audio file path or URL.
     """
     guru = GURU_PERSONAS.get(guru_id, GURU_PERSONAS["classical"])
-    import time
     timestamp = int(time.time() * 1000)
 
     # Try ElevenLabs first

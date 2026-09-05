@@ -8,6 +8,11 @@ node_modules/
 __pycache__/
 *.pyc
 
+# Python virtual environments
+.venv/
+venv/
+env/
+
 # Database
 *.db
 *.sqlite

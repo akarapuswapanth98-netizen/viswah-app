@@ -48,10 +48,10 @@ const CourseScreen = ({ route, navigation }) => {
           setCompletedIds(completedIdsList);
           const completed = lessonsData.filter(l => completedIdsList.includes(l.id)).length;
           setProgress(lessonsData.length > 0 ? completed / lessonsData.length : 0);
-        } catch {}
+        } catch (e) { console.warn('Failed to load enrollment data:', e); }
       }
     } catch (e) {
-      setCourse({ id: courseId, title: 'Course', description: 'Loading...', stage: 1, difficulty: 'beginner' });
+      setCourse({ id: courseId, title: 'Course', description: 'Loading...', stage: 1, difficulty: 'beginner', instrument: 'vocal', image_url: null });
       setLessons([{ id: 1, title: 'Lesson 1', order: 1, lesson_type: 'theory', duration_minutes: 10 }]);
     } finally { setLoading(false); }
   };

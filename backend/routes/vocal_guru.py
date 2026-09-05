@@ -104,8 +104,12 @@ def teach_topic(topic: str, guru_id: str = "classical"):
         400: {"model": ErrorResponse, "description": "TTS not available"}
     }
 )
-def speak_text(text: str, guru_id: str = "classical"):
+def speak_text(request: dict):
     """Generate speech audio from text"""
+    text = request.get("text", "")
+    guru_id = request.get("guru_id", "classical")
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
     audio_path = generate_speech(text, guru_id)
     if not audio_path:
         raise HTTPException(

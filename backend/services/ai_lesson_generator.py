@@ -51,6 +51,8 @@ def generate_lesson(topic: str, difficulty: str, instrument: str, lesson_type: s
                 temperature=0.7,
                 max_tokens=1500
             )
+            if not response.choices or not response.choices[0].message.content:
+                raise ValueError("Empty AI response")
             return _parse_json_response(response.choices[0].message.content)
         except Exception as e:
             logger.error(f"OpenAI error: {e}")
@@ -93,6 +95,8 @@ def generate_practice_exercise(topic: str, skill_level: str) -> Dict:
                 temperature=0.7,
                 max_tokens=800
             )
+            if not response.choices or not response.choices[0].message.content:
+                raise ValueError("Empty AI response")
             return _parse_json_response(response.choices[0].message.content)
         except Exception as e:
             logger.error(f"OpenAI error: {e}")

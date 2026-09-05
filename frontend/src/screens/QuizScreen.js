@@ -22,6 +22,7 @@ const QuizScreen = ({ route, navigation }) => {
   const fetchQuiz = async () => {
     try {
       const res = await authFetch(api.lesson(lessonId));
+      if (!res.ok) throw new Error('Lesson not found');
       const data = await res.json();
       if (data.quiz_questions?.length > 0) {
         setQuiz({ questions: data.quiz_questions });

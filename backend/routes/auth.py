@@ -88,7 +88,11 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         hashed_password=get_password_hash(user.password)
     )
     db.add(new_user)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Email or username already taken")
     db.refresh(new_user)
     return new_user
 

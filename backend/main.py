@@ -14,8 +14,10 @@ load_dotenv()
 
 Base.metadata.create_all(bind=engine)
 db = SessionLocal()
-seed_database(db)
-db.close()
+try:
+    seed_database(db)
+finally:
+    db.close()
 
 app = FastAPI(
     title="Viswah Music Learning API",
@@ -24,7 +26,7 @@ app = FastAPI(
 )
 
 # Fix #4: Secure CORS from environment
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,

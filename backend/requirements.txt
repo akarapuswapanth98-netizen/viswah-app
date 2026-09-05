@@ -1,28 +1,28 @@
 # Viswah Backend - Python Dependencies
 
 # Web Framework
-fastapi
-uvicorn
-python-multipart
+fastapi>=0.100.0,<1.0.0
+uvicorn>=0.20.0,<1.0.0
+python-multipart>=0.0.5
 
 # Database
-sqlalchemy
-alembic
+sqlalchemy>=2.0.0,<3.0.0
+alembic>=1.10.0,<2.0.0
 
 # Authentication
-python-jose[cryptography]
-passlib[bcrypt]
-python-dotenv
+python-jose[cryptography]>=3.3.0,<4.0.0
+passlib[bcrypt]>=1.7.0,<2.0.0
+python-dotenv>=1.0.0,<2.0.0
 
 # Email validation
-email-validator
+email-validator>=2.0.0,<3.0.0
 
 # AI/ML (optional)
-openai
+openai>=1.0.0,<2.0.0
 
 # TTS (optional)
-gtts
-# elevenlabs  # Uncomment for premium TTS
+gtts>=2.3.0,<3.0.0
+# elevenlabs>=0.2.0,<1.0.0  # Uncomment for premium TTS
 
 # Utilities
-pydantic
+pydantic>=2.0.0,<3.0.0
