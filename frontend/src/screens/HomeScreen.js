@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, GLASS, createGradient } from '../theme';
 import { SectionHeader, Tag, ProgressBar } from '../components/UIComponents';
 import { api, authFetch, getAuthToken } from '../config/api';
 
@@ -115,7 +115,6 @@ const HomeScreen = ({ navigation }) => {
         if (Array.isArray(coursesData)) setCourses(coursesData);
       }
     } catch (error) {
-      // silent fail - use defaults
     } finally {
       setLoading(false);
     }
@@ -214,7 +213,7 @@ const HomeScreen = ({ navigation }) => {
             style={styles.notificationButton}
             onPress={() => {}}
           >
-            <MaterialCommunityIcons name="bell-outline" size={22} color={COLORS.gray700} />
+            <MaterialCommunityIcons name="bell-outline" size={22} color={COLORS.text} />
             {notificationCount > 0 && (
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationBadgeText}>{notificationCount}</Text>
@@ -343,7 +342,7 @@ const HomeScreen = ({ navigation }) => {
                   style={styles.startSessionButton}
                   onPress={() => navigation.navigate('VocalGuru')}
                 >
-                  <MaterialCommunityIcons name="play" size={16} color={COLORS.primary} />
+                  <MaterialCommunityIcons name="play" size={16} color={COLORS.neon} />
                   <Text style={styles.startSessionText}>Start Session</Text>
                 </TouchableOpacity>
               </View>
@@ -567,16 +566,16 @@ const HomeScreen = ({ navigation }) => {
                   <MaterialCommunityIcons
                     name={getInstrumentIcon(course.instrument)}
                     size={28}
-                    color={COLORS.primary}
+                    color={COLORS.neon}
                   />
                 </View>
                 <Text style={styles.browseCardTitle} numberOfLines={1}>
                   {course.title}
                 </Text>
-                <ProgressBar progress={course.progress} height={4} color={COLORS.primary} />
+                <ProgressBar progress={course.progress} height={4} color={COLORS.neon} />
                 <View style={styles.browseCardFooter}>
                   <Text style={styles.browseLessons}>12 Lessons</Text>
-                  <MaterialCommunityIcons name="play-circle-outline" size={20} color={COLORS.primary} />
+                  <MaterialCommunityIcons name="play-circle-outline" size={20} color={COLORS.neon} />
                 </View>
               </View>
             </TouchableOpacity>
@@ -595,8 +594,8 @@ const HomeScreen = ({ navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
+            colors={[COLORS.neon]}
+            tintColor={COLORS.neon}
             progressViewOffset={20}
           />
         }
@@ -617,7 +616,7 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FE',
+    backgroundColor: COLORS.bg,
   },
   scrollView: {
     flex: 1,
@@ -630,7 +629,6 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
 
-  // Header
   headerWrapper: {
     paddingTop: 56,
     paddingHorizontal: SPACING.lg,
@@ -656,23 +654,24 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     fontSize: 14,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     fontWeight: '400',
   },
   usernameText: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
     marginTop: 1,
   },
   notificationButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
+    borderWidth: 1,
+    borderColor: COLORS.glass.border,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.small,
   },
   notificationBadge: {
     position: 'absolute',
@@ -691,7 +690,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Continue Learning
   horizontalScroll: {
     paddingRight: SPACING.lg,
   },
@@ -700,7 +698,8 @@ const styles = StyleSheet.create({
     marginRight: SPACING.md,
     borderRadius: BORDER_RADIUS.xl,
     overflow: 'hidden',
-    ...SHADOWS.medium,
+    borderWidth: 1,
+    borderColor: COLORS.glass.border,
   },
   continueCardGradient: {
     padding: SPACING.lg,
@@ -709,7 +708,7 @@ const styles = StyleSheet.create({
   },
   continueCardOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: 'rgba(0,0,0,0.15)',
     borderRadius: BORDER_RADIUS.xl,
   },
   continueCardContent: {
@@ -734,19 +733,18 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   continueButton: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.neon,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderRadius: BORDER_RADIUS.full,
     alignSelf: 'flex-start',
   },
   continueButtonText: {
-    color: COLORS.primary,
+    color: COLORS.bg,
     fontSize: 13,
     fontWeight: '700',
   },
 
-  // Circular Progress
   progressCircleBg: {
     position: 'absolute',
     borderColor: 'rgba(255,255,255,0.25)',
@@ -765,12 +763,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Vocal Guru
   vocalGuruCard: {
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.xl,
     minHeight: 160,
-    ...SHADOWS.medium,
+    borderWidth: 1,
+    borderColor: COLORS.glass.border,
   },
   vocalGuruContent: {
     flexDirection: 'row',
@@ -803,15 +801,17 @@ const styles = StyleSheet.create({
   startSessionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderRadius: BORDER_RADIUS.full,
     alignSelf: 'flex-start',
     gap: SPACING.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   startSessionText: {
-    color: COLORS.primary,
+    color: COLORS.neon,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -826,7 +826,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
 
-  // Instruments
   instrumentsRow: {
     flexDirection: 'row',
     gap: SPACING.md,
@@ -835,7 +834,8 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: BORDER_RADIUS.xl,
     overflow: 'hidden',
-    ...SHADOWS.medium,
+    borderWidth: 1,
+    borderColor: COLORS.glass.border,
   },
   instrumentCard: {
     padding: SPACING.xl,
@@ -855,7 +855,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Piano Illustration
   pianoIllustration: {
     alignItems: 'center',
     marginBottom: SPACING.sm,
@@ -882,7 +881,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
 
-  // Drum Illustration
   drumIllustration: {
     alignItems: 'center',
     marginBottom: SPACING.sm,
@@ -899,11 +897,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
 
-  // Feature Cards (Speech & Lyrics)
   featureCard: {
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.lg,
-    ...SHADOWS.medium,
+    borderWidth: 1,
+    borderColor: COLORS.glass.border,
   },
   featureCardContent: {
     flexDirection: 'row',
@@ -960,14 +958,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Browse Courses
   browseCard: {
     width: width * 0.44,
     marginRight: SPACING.md,
     borderRadius: BORDER_RADIUS.xl,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
+    borderWidth: 1,
+    borderColor: COLORS.glass.border,
     overflow: 'hidden',
-    ...SHADOWS.small,
   },
   browseCardInner: {
     padding: SPACING.lg,
@@ -991,18 +989,18 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: BORDER_RADIUS.sm,
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.surface,
   },
   stageChipText: {
     fontSize: 10,
     fontWeight: '600',
-    color: COLORS.gray600,
+    color: COLORS.textSecondary,
   },
   browseCardIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: `${COLORS.neon}15`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md,
@@ -1010,7 +1008,7 @@ const styles = StyleSheet.create({
   browseCardTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
     marginBottom: SPACING.sm,
   },
   browseCardFooter: {
@@ -1021,10 +1019,9 @@ const styles = StyleSheet.create({
   },
   browseLessons: {
     fontSize: 12,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
   },
 
-  // Bottom Spacer
   bottomSpacer: {
     height: 40,
   },

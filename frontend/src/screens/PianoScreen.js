@@ -1,1038 +1,496 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Animated,
-  Dimensions,
-  Platform,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated,
+  Dimensions, StatusBar, Platform, Vibration,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
-import { Tag } from '../components/UIComponents';
-import { GlowBurst, FrequencyBars } from '../components/VisualEffects';
+import { Svg, Defs, LinearGradient, Stop, Rect, Circle, Ellipse, Filter, FeGaussianBlur } from 'react-native-svg';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
+import { Ionicons } from '@expo/vector-icons';
+import AudioVisualizer3D from '../components/AudioVisualizer3D';
+import { getAuthToken } from '../config/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const NOTE_COLORS = [
-  '#FF6B6B', '#FF8E53', '#FFC107', '#4ECDC4', '#6C63FF',
-  '#9C27B0', '#E91E63', '#FF5722', '#00BCD4', '#8BC34A',
+const NOTES = [
+  { note: 'C4', freq: 261.63, type: 'white' },
+  { note: 'C#4', freq: 277.18, type: 'black' },
+  { note: 'D4', freq: 293.66, type: 'white' },
+  { note: 'D#4', freq: 311.13, type: 'black' },
+  { note: 'E4', freq: 329.63, type: 'white' },
+  { note: 'F4', freq: 349.23, type: 'white' },
+  { note: 'F#4', freq: 369.99, type: 'black' },
+  { note: 'G4', freq: 392.0, type: 'white' },
+  { note: 'G#4', freq: 415.30, type: 'black' },
+  { note: 'A4', freq: 440.0, type: 'white' },
+  { note: 'A#4', freq: 466.16, type: 'black' },
+  { note: 'B4', freq: 493.88, type: 'white' },
+  { note: 'C5', freq: 523.25, type: 'white' },
+  { note: 'C#5', freq: 554.37, type: 'black' },
+  { note: 'D5', freq: 587.33, type: 'white' },
+  { note: 'D#5', freq: 622.25, type: 'black' },
+  { note: 'E5', freq: 659.25, type: 'white' },
 ];
 
-const NOTE_FREQUENCIES = {
-  C4: 261.63, 'C#4': 277.18, D4: 293.66, 'D#4': 311.13,
-  E4: 329.63, F4: 349.23, 'F#4': 369.99, G4: 392.00,
-  'G#4': 415.30, A4: 440.00, 'A#4': 466.16, B4: 493.88,
-  C5: 523.25, 'C#5': 554.37, D5: 587.33, 'D#5': 622.25,
-  E5: 659.25, F5: 698.46, 'F#5': 739.99, G5: 783.99,
-  'G#5': 830.61, A5: 880.00, 'A#5': 932.33, B5: 987.77,
+const KEY_MAP = ['a','w','s','e','d','f','t','g','y','h','u','j','k','o','l','p',';'];
+
+const OCTAVES = [-1, 0, 1];
+
+const PRESETS = {
+  Grand: { waveform: 'sine', attack: 0.01, decay: 0.3, sustain: 0.4, release: 0.8, gain: 0.25 },
+  Bright: { waveform: 'triangle', attack: 0.005, decay: 0.15, sustain: 0.6, release: 0.4, gain: 0.3 },
+  Warm: { waveform: 'sine', attack: 0.03, decay: 0.5, sustain: 0.3, release: 1.0, gain: 0.2 },
 };
 
-const ALL_NOTES = [
-  { note: 'C4', isBlack: false },
-  { note: 'C#4', isBlack: true },
-  { note: 'D4', isBlack: false },
-  { note: 'D#4', isBlack: true },
-  { note: 'E4', isBlack: false },
-  { note: 'F4', isBlack: false },
-  { note: 'F#4', isBlack: true },
-  { note: 'G4', isBlack: false },
-  { note: 'G#4', isBlack: true },
-  { note: 'A4', isBlack: false },
-  { note: 'A#4', isBlack: true },
-  { note: 'B4', isBlack: false },
-  { note: 'C5', isBlack: false },
-  { note: 'C#5', isBlack: true },
-  { note: 'D5', isBlack: false },
-  { note: 'D#5', isBlack: true },
-  { note: 'E5', isBlack: false },
-  { note: 'F5', isBlack: false },
-  { note: 'F#5', isBlack: true },
-  { note: 'G5', isBlack: false },
-  { note: 'G#5', isBlack: true },
-  { note: 'A5', isBlack: false },
-  { note: 'A#5', isBlack: true },
-  { note: 'B5', isBlack: false },
-  { note: 'C6', isBlack: false },
-  { note: 'C#6', isBlack: true },
-  { note: 'D6', isBlack: false },
-  { note: 'D#6', isBlack: true },
-  { note: 'E6', isBlack: false },
-  { note: 'F6', isBlack: false },
-  { note: 'F#6', isBlack: true },
-  { note: 'G6', isBlack: false },
-  { note: 'G#6', isBlack: true },
-  { note: 'A6', isBlack: false },
-  { note: 'A#6', isBlack: true },
-  { note: 'B6', isBlack: false },
+const VEL_CURVE = [
+  { threshold: 0.08, velocity: 0.3, label: 'ppp' },
+  { threshold: 0.12, velocity: 0.45, label: 'pp' },
+  { threshold: 0.16, velocity: 0.6, label: 'p' },
+  { threshold: 0.2, velocity: 0.75, label: 'mp' },
+  { threshold: 0.25, velocity: 0.85, label: 'mf' },
+  { threshold: 0.3, velocity: 0.92, label: 'f' },
+  { threshold: 0.4, velocity: 1.0, label: 'ff' },
 ];
 
-const WHITE_KEY_WIDTH = 40;
-const BLACK_KEY_WIDTH = 24;
-const KEY_HEIGHT = 200;
-const BLACK_KEY_HEIGHT = 130;
+const PianoScreen = ({ onNavigate }) => {
+  const [user, setUser] = useState(null);
+  const [preset, setPreset] = useState('Grand');
+  const [selectedOctave, setSelectedOctave] = useState(0);
+  const [octave, setOctave] = useState(4);
+  const [activeKeys, setActiveKeys] = useState({});
+  const [recording, setRecording] = useState(false);
+  const [playback, setPlayback] = useState(false);
+  const [recordingData, setRecordingData] = useState([]);
+  const [recordings, setRecordings] = useState([]);
+  const [velocityMap, setVelocityMap] = useState({});
+  const [reverbOn, setReverb] = useState(false);
+  const [sustainOn, setSustain] = useState(false);
+  const [visualizerMode, setVisualizerMode] = useState('frequency');
 
-const PianoScreen = ({ navigation }) => {
-  const [activeNote, setActiveNote] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordedNotes, setRecordedNotes] = useState([]);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [tempo, setTempo] = useState(120);
-  const [currentOctave, setCurrentOctave] = useState(4);
-  const [pressedKeys, setPressedKeys] = useState({});
-  const [glowActive, setGlowActive] = useState(false);
-  const [glowColor, setGlowColor] = useState('#6C63FF');
-  const [glowKey, setGlowKey] = useState(0);
-  const [freqValues, setFreqValues] = useState(Array(16).fill(0.1));
-
-  const audioContext = useRef(null);
-  const activeOscillators = useRef({});
-  const activeGains = useRef({});
-  const recordingStart = useRef(0);
-  const playbackTimeout = useRef(null);
-  const pressAnimations = useRef({});
-  const recordingPulse = useRef(new Animated.Value(1)).current;
-  const volumeAnim = useRef(new Animated.Value(0)).current;
-  const timelineScroll = useRef(null);
+  const audioCtxRef = useRef(null);
+  const analyserRef = useRef(null);
+  const gainNodeRef = useRef(null);
+  const reverbNodeRef = useRef(null);
+  const recordStartRef = useRef(null);
+  const keyAnims = useRef({}).current;
+  const glowAnims = useRef({}).current;
+  const prevNoteRef = useRef(null);
 
   useEffect(() => {
-    return () => {
-      Object.values(activeOscillators.current).forEach(osc => {
-        try { osc.stop(); } catch (e) {}
-      });
-      if (playbackTimeout.current) clearTimeout(playbackTimeout.current);
-    };
+    getAuthToken().then(t => { if (t) setUser({ token: t }); });
   }, []);
 
   useEffect(() => {
-    if (isRecording) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(recordingPulse, {
-            toValue: 0.3,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(recordingPulse, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      recordingPulse.setValue(1);
-    }
-  }, [isRecording]);
+    setOctave(4 + selectedOctave);
+  }, [selectedOctave]);
 
-  const getAudioContext = () => {
-    if (!audioContext.current) {
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) {
-          audioContext.current = new AudioContextClass();
+  const getAudioContext = useCallback(() => {
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      analyserRef.current = audioCtxRef.current.createAnalyser();
+      analyserRef.current.fftSize = 256;
+      analyserRef.current.smoothingTimeConstant = 0.75;
+      gainNodeRef.current = audioCtxRef.current.createGain();
+      gainNodeRef.current.gain.value = PRESETS[preset].gain;
+      gainNodeRef.current.connect(analyserRef.current);
+      analyserRef.current.connect(audioCtxRef.current.destination);
+      if (reverbOn) {
+        reverbNodeRef.current = audioCtxRef.current.createConvolver();
+        const len = audioCtxRef.current.sampleRate * 1.5;
+        const buf = audioCtxRef.current.createBuffer(2, len, audioCtxRef.current.sampleRate);
+        for (let ch = 0; ch < 2; ch++) {
+          const data = buf.getChannelData(ch);
+          for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
         }
+        reverbNodeRef.current.buffer = buf;
+        reverbNodeRef.current.connect(gainNodeRef.current);
       }
     }
-    return audioContext.current;
-  };
+    if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+    return audioCtxRef.current;
+  }, [preset, reverbOn]);
 
-  const playNote = useCallback((noteName) => {
-    const freq = NOTE_FREQUENCIES[noteName];
-    if (!freq) return;
+  const playNote = useCallback((note, velocity = 0.8) => {
+    const ctx = getAudioContext();
+    const settings = PRESETS[preset];
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    const osc = ctx.createOscillator();
+    osc.type = settings.waveform;
+    osc.frequency.setValueAtTime(note.freq, now);
 
-    try {
-      const ctx = getAudioContext();
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
+    const velSetting = VEL_CURVE.find(v => velocity <= v.threshold) || VEL_CURVE[VEL_CURVE.length - 1];
+    const velGain = velSetting.velocity;
 
-      osc.type = 'sine';
-      osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(settings.gain * velGain, now + settings.attack);
+    gain.gain.linearRampToValueAtTime(settings.gain * velGain * settings.sustain, now + settings.attack + settings.decay);
 
-      gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
-
-      osc.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.8);
-
-      activeOscillators.current[noteName] = osc;
-      activeGains.current[noteName] = gainNode;
-
-      setActiveNote(noteName);
-
-      Animated.sequence([
-        Animated.timing(volumeAnim, {
-          toValue: 1,
-          duration: 50,
-          useNativeDriver: false,
-        }),
-        Animated.timing(volumeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-      ]).start();
-
-      setPressedKeys(prev => ({ ...prev, [noteName]: true }));
-
-      const colorIdx = ALL_NOTES.findIndex(n => n.note === noteName) % NOTE_COLORS.length;
-      setGlowColor(NOTE_COLORS[colorIdx]);
-      setGlowActive(true);
-      setGlowKey(prev => prev + 1);
-      setFreqValues(prev => prev.map((_, i) => Math.random() * 0.7 + 0.3));
-      setTimeout(() => setGlowActive(false), 400);
-
-      if (!pressAnimations.current[noteName]) {
-        pressAnimations.current[noteName] = new Animated.Value(0);
-      }
-      Animated.sequence([
-        Animated.timing(pressAnimations.current[noteName], {
-          toValue: 1,
-          duration: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(pressAnimations.current[noteName], {
-          toValue: 0,
-          tension: 300,
-          friction: 12,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      if (isRecording) {
-        const timestamp = Date.now() - recordingStart.current;
-        setRecordedNotes(prev => [
-          ...prev,
-          { note: noteName, freq, time: timestamp, duration: 300 },
-        ]);
-      }
-
-      setTimeout(() => {
-        setActiveNote(null);
-        setPressedKeys(prev => ({ ...prev, [noteName]: false }));
-      }, 300);
-    } catch (e) {
-      console.error('Error playing note:', e);
+    if (sustainOn) {
+      gain.gain.setValueAtTime(settings.gain * velGain * settings.sustain, now + settings.attack + settings.decay);
+    } else {
+      gain.gain.linearRampToValueAtTime(0, now + settings.attack + settings.decay + settings.release);
     }
-  }, [isRecording]);
 
-  const stopNote = useCallback((noteName) => {
-    if (activeGains.current[noteName]) {
-      try {
-        const ctx = getAudioContext();
-        activeGains.current[noteName].gain.cancelScheduledValues(ctx.currentTime);
-        activeGains.current[noteName].gain.setValueAtTime(
-          activeGains.current[noteName].gain.value,
-          ctx.currentTime
-        );
-        activeGains.current[noteName].gain.exponentialRampToValueAtTime(
-          0.001,
-          ctx.currentTime + 0.1
-        );
-      } catch (e) {}
+    osc.connect(reverbOn && reverbNodeRef.current ? reverbNodeRef.current : gain);
+    gain.connect(reverbOn && reverbNodeRef.current ? reverbNodeRef.current : gainNodeRef.current);
+    osc.start(now);
+    osc.stop(now + settings.attack + settings.decay + settings.release + 0.1);
+
+    setActiveKeys(prev => ({ ...prev, [note.note]: true }));
+    setVelocityMap(prev => ({ ...prev, [note.note]: velSetting.label }));
+    Vibration.vibrate(15);
+
+    if (recording) {
+      const elapsed = Date.now() - recordStartRef.current;
+      setRecordingData(prev => [...prev, { note: note.note, time: elapsed, velocity: velGain, duration: 0 }]);
     }
-    setPressedKeys(prev => ({ ...prev, [noteName]: false }));
+
+    prevNoteRef.current = { note, osc, gain, startTime: now, settings };
+
+    setTimeout(() => {
+      setActiveKeys(prev => {
+        const copy = { ...prev };
+        delete copy[note.note];
+        return copy;
+      });
+      setVelocityMap(prev => {
+        const copy = { ...prev };
+        delete copy[note.note];
+        return copy;
+      });
+    }, sustainOn ? 2000 : (settings.attack + settings.decay + settings.release) * 1000 + 200);
+  }, [getAudioContext, preset, sustainOn, recording]);
+
+  const stopNote = useCallback((note) => {
+    if (sustainOn) return;
+    if (prevNoteRef.current && prevNoteRef.current.note.note === note.note) {
+      const { gain, settings } = prevNoteRef.current;
+      const ctx = audioCtxRef.current;
+      if (ctx && gain) {
+        const now = ctx.currentTime;
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.linearRampToValueAtTime(0, now + settings.release * 0.5);
+      }
+    }
+    setActiveKeys(prev => {
+      const copy = { ...prev };
+      delete copy[note.note];
+      return copy;
+    });
+  }, [sustainOn]);
+
+  const startRecording = useCallback(() => {
+    setRecordingData([]);
+    recordStartRef.current = Date.now();
+    setRecording(true);
   }, []);
 
-  const handleRecord = () => {
-    if (isRecording) {
-      setIsRecording(false);
-    } else {
-      setRecordedNotes([]);
-      recordingStart.current = Date.now();
-      setIsRecording(true);
+  const stopRecording = useCallback(() => {
+    setRecording(false);
+    if (recordingData.length > 0) {
+      const rec = {
+        id: Date.now(),
+        preset,
+        octave,
+        date: new Date().toLocaleDateString(),
+        notes: recordingData,
+      };
+      setRecordings(prev => [...prev, rec]);
     }
-  };
+  }, [recordingData, preset, octave, user]);
 
-  const handleStop = () => {
-    if (isRecording) setIsRecording(false);
-    if (isPlaying) {
-      if (playbackTimeout.current) clearTimeout(playbackTimeout.current);
-      setIsPlaying(false);
-    }
-  };
-
-  const handlePlayback = () => {
-    if (recordedNotes.length === 0) return;
-
-    setIsPlaying(true);
-    let index = 0;
-
-    const playNext = () => {
-      if (index >= recordedNotes.length) {
-        setIsPlaying(false);
-        return;
+  const playRecording = useCallback((rec) => {
+    setPlayback(true);
+    rec.notes.forEach(n => {
+      const noteObj = NOTES.find(nn => nn.note === n.note);
+      if (noteObj) {
+        setTimeout(() => playNote(noteObj, n.velocity), n.time);
       }
+    });
+    setTimeout(() => setPlayback(false), Math.max(...rec.notes.map(n => n.time)) + 1500);
+  }, [playNote]);
 
-      const noteData = recordedNotes[index];
-      playNote(noteData.note);
+  const deleteRecording = useCallback((id) => {
+    setRecordings(prev => prev.filter(r => r.id !== id));
+  }, []);
 
-      index++;
-      const delay =
-        index < recordedNotes.length
-          ? recordedNotes[index].time - noteData.time
-          : 300;
+  const whiteKeys = NOTES.filter(n => n.type === 'white');
+  const blackKeys = NOTES.filter(n => n.type === 'black');
 
-      playbackTimeout.current = setTimeout(playNext, Math.max(delay, 100));
-    };
-
-    playNext();
+  const getBlackKeyLeft = (idx) => {
+    const posMap = [0, 1, 3, 4, 5];
+    const pianoWidth = SCREEN_WIDTH - 32;
+    const wKeyW = pianoWidth / whiteKeys.length;
+    return posMap[idx] * wKeyW + wKeyW * 0.65;
   };
 
-  const handleClear = () => {
-    setRecordedNotes([]);
-    if (playbackTimeout.current) clearTimeout(playbackTimeout.current);
-    setIsPlaying(false);
-  };
-
-  const adjustOctave = (delta) => {
-    setCurrentOctave(prev => Math.max(2, Math.min(6, prev + delta)));
-  };
-
-  const renderWhiteKeys = () => {
-    const whiteNotes = ALL_NOTES.filter(n => !n.isBlack);
-    const totalWidth = whiteNotes.length * WHITE_KEY_WIDTH;
-
-    return (
-      <View style={[styles.whiteKeysRow, { width: totalWidth }]}>
-        {whiteNotes.map((n, index) => {
-          const isActive = activeNote === n.note;
-          const anim = pressAnimations.current[n.note] || new Animated.Value(0);
-
-          return (
-            <Animated.View
-              key={n.note}
-              style={[
-                styles.whiteKeyOuter,
-                { width: WHITE_KEY_WIDTH, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 3] }) }] },
-              ]}
-            >
-              <TouchableOpacity
-                style={styles.whiteKeyTouchable}
-                onPressIn={() => playNote(n.note)}
-                onPressOut={() => stopNote(n.note)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={isActive ? ['#6C63FF', '#8B85FF'] : ['#FFFFFF', '#F0F0F0']}
-                  style={styles.whiteKeyInner}
-                >
-                  <View
-                    style={[
-                      styles.whiteKeyNoteLabel,
-                      isActive && styles.whiteKeyNoteLabelActive,
-                    ]}
-                  >
-                    <Animated.Text
-                      style={[
-                        styles.whiteKeyNoteText,
-                        isActive && styles.whiteKeyNoteTextActive,
-                      ]}
-                    >
-                      {n.note}
-                    </Animated.Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        })}
-      </View>
-    );
-  };
-
-  const renderBlackKeys = () => {
-    const blackNotes = ALL_NOTES.filter(n => n.isBlack);
-    const whiteNotes = ALL_NOTES.filter(n => !n.isBlack);
-    const totalWidth = whiteNotes.length * WHITE_KEY_WIDTH;
-
-    return (
-      <View style={[styles.blackKeysOverlay, { width: totalWidth }]}>
-        {blackNotes.map((n) => {
-          const isActive = activeNote === n.note;
-          const anim = pressAnimations.current[n.note] || new Animated.Value(0);
-
-          const noteIndex = ALL_NOTES.findIndex(note => note.note === n.note);
-          let whiteIndexBefore = 0;
-          for (let i = 0; i < noteIndex; i++) {
-            if (!ALL_NOTES[i].isBlack) whiteIndexBefore++;
-          }
-          const leftPos = whiteIndexBefore * WHITE_KEY_WIDTH + WHITE_KEY_WIDTH - BLACK_KEY_WIDTH / 2;
-
-          return (
-            <Animated.View
-              key={n.note}
-              style={[
-                styles.blackKeyOuter,
-                {
-                  left: leftPos,
-                  width: BLACK_KEY_WIDTH,
-                  transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 2] }) }],
-                },
-              ]}
-            >
-              <TouchableOpacity
-                style={styles.blackKeyTouchable}
-                onPressIn={() => playNote(n.note)}
-                onPressOut={() => stopNote(n.note)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={isActive ? ['#6C63FF', '#5A52D5'] : ['#333333', '#111111']}
-                  style={styles.blackKeyInner}
-                >
-                  <View
-                    style={[
-                      styles.blackKeyNoteLabel,
-                      isActive && styles.blackKeyNoteLabelActive,
-                    ]}
-                  >
-                    <Animated.Text
-                      style={[
-                        styles.blackKeyNoteText,
-                        isActive && styles.blackKeyNoteTextActive,
-                      ]}
-                    >
-                      {n.note}
-                    </Animated.Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        })}
-      </View>
-    );
-  };
-
-  const activeFreq = activeNote ? NOTE_FREQUENCIES[activeNote] : null;
+  const handleKeyPress = useCallback((note, e) => {
+    const touch = e?.nativeEvent?.locationY || 20;
+    const keyHeight = 200;
+    const velocity = Math.min(1, Math.max(0, (touch / keyHeight) * 1.2 + 0.2));
+    playNote(note, velocity);
+  }, [playNote]);
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        {...createGradient(['#1A1A2E', '#2D2D44'])}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
+      <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => onNavigate('home')} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#C4B5FD" />
           </TouchableOpacity>
-          <View style={styles.headerInfo}>
-            <Animated.Text style={styles.headerTitle}>Virtual Piano</Animated.Text>
-            <Animated.Text style={styles.headerSubtitle}>
-              2 Octaves - C4 to B6
-            </Animated.Text>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.headerTitle}>Piano</Text>
+            <Text style={styles.headerSub}>{preset} | Oct {octave}</Text>
           </View>
-          <Animated.View
-            style={[
-              styles.recordingDot,
-              { opacity: recordingPulse },
-            ]}
-          >
-            {isRecording && <View style={styles.recordingDotInner} />}
-          </Animated.View>
-        </View>
-      </LinearGradient>
-
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Note Display */}
-        <View style={[
-          styles.noteDisplay,
-          activeNote && {
-            shadowColor: glowColor,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.6,
-            shadowRadius: 20,
-            elevation: 12,
-          },
-        ]}>
-          <GlowBurst active={glowActive} color={glowColor} x={100} y={20} count={8} key={glowKey} />
-          <Animated.Text style={styles.currentNote}>
-            {activeNote || 'Tap a key'}
-          </Animated.Text>
-          {activeFreq && (
-            <Animated.Text style={styles.currentFreq}>
-              {activeFreq.toFixed(2)} Hz
-            </Animated.Text>
-          )}
-          <View style={styles.volumeMeter}>
-            <Animated.View
-              style={[
-                styles.volumeMeterFill,
-                {
-                  width: volumeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
-                },
-              ]}
-            />
-          </View>
+          <View style={{ width: 40 }} />
         </View>
 
-        {/* Frequency Visualizer */}
-        <FrequencyBars
-          values={freqValues}
-          color={glowColor}
-          barCount={16}
-          height={50}
-          style={{ marginBottom: SPACING.md }}
+        {/* Visualizer */}
+        <AudioVisualizer3D
+          analyser={analyserRef.current}
+          isPlaying={Object.keys(activeKeys).length > 0}
+          style={styles.visualizerWrap}
         />
 
+        {/* Octave Selector */}
+        <View style={styles.octaveRow}>
+          <Text style={styles.octaveLabel}>Octave</Text>
+          <View style={styles.octaveButtons}>
+            {OCTAVES.map(o => (
+              <TouchableOpacity
+                key={o}
+                style={[styles.octaveBtn, selectedOctave === o && styles.octaveBtnActive]}
+                onPress={() => setSelectedOctave(o)}
+              >
+                <Text style={[styles.octaveBtnText, selectedOctave === o && styles.octaveBtnTextActive]}>
+                  {4 + o}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Active note display */}
+        <View style={styles.noteDisplayRow}>
+          {Object.keys(activeKeys).map(n => (
+            <View key={n} style={styles.noteChip}>
+              <Text style={styles.noteChipText}>{n}</Text>
+              <Text style={styles.velLabel}>{velocityMap[n] || ''}</Text>
+            </View>
+          ))}
+          {Object.keys(activeKeys).length === 0 && (
+            <Text style={styles.hintText}>Tap a key to play</Text>
+          )}
+        </View>
+
         {/* Piano Keyboard */}
-        <View style={styles.pianoShadow}>
-          <View style={styles.pianoContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.pianoScrollContent}
-            >
-              {renderWhiteKeys()}
-              {renderBlackKeys()}
-            </ScrollView>
-          </View>
-        </View>
+        <View style={styles.pianoWrap}>
+          <Svg width={SCREEN_WIDTH - 32} height={240} style={styles.pianoSvg}>
+            <Defs>
+              <LinearGradient id="whiteKey" x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="#FFFFFF" />
+                <Stop offset="85%" stopColor="#F0EDE8" />
+                <Stop offset="100%" stopColor="#E8E4DC" />
+              </LinearGradient>
+              <LinearGradient id="whiteKeyActive" x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="#C4B5FD" />
+                <Stop offset="100%" stopColor="#7C3AED" />
+              </LinearGradient>
+              <LinearGradient id="blackKey" x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="#2D2D2D" />
+                <Stop offset="70%" stopColor="#1A1A1A" />
+                <Stop offset="100%" stopColor="#0D0D0D" />
+              </LinearGradient>
+              <LinearGradient id="blackKeyActive" x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="#7C3AED" />
+                <Stop offset="100%" stopColor="#4C1D95" />
+              </LinearGradient>
+              <LinearGradient id="specularWhite" x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
+                <Stop offset="30%" stopColor="rgba(255,255,255,0.05)" />
+                <Stop offset="100%" stopColor="rgba(0,0,0,0.08)" />
+              </LinearGradient>
+              <LinearGradient id="specularBlack" x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="rgba(255,255,255,0.2)" />
+                <Stop offset="25%" stopColor="rgba(255,255,255,0.03)" />
+                <Stop offset="100%" stopColor="rgba(0,0,0,0.2)" />
+              </LinearGradient>
+            </Defs>
 
-        {/* Controls Bar */}
-        <View style={styles.controlsBar}>
-          {/* Record Button */}
-          <TouchableOpacity
-            style={[
-              styles.controlBtn,
-              styles.recordBtn,
-              isRecording && styles.recordBtnActive,
-            ]}
-            onPress={handleRecord}
-          >
-            <View
-              style={[
-                styles.recordBtnDot,
-                isRecording && styles.recordBtnDotActive,
-              ]}
-            />
-            <Animated.Text style={styles.recordBtnText}>
-              {isRecording ? 'Recording' : 'Record'}
-            </Animated.Text>
-          </TouchableOpacity>
-
-          {/* Stop Button */}
-          <TouchableOpacity style={[styles.controlBtn, styles.stopBtn]} onPress={handleStop}>
-            <MaterialCommunityIcons name="stop" size={20} color={COLORS.white} />
-          </TouchableOpacity>
-
-          {/* Play Button */}
-          <TouchableOpacity
-            style={[
-              styles.controlBtn,
-              styles.playBtn,
-              (recordedNotes.length === 0 || isPlaying) && styles.playBtnDisabled,
-            ]}
-            onPress={handlePlayback}
-            disabled={recordedNotes.length === 0 || isPlaying}
-          >
-            <MaterialCommunityIcons
-              name={isPlaying ? 'pause' : 'play'}
-              size={20}
-              color={COLORS.white}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Tempo & Octave */}
-        <View style={styles.settingsRow}>
-          <View style={styles.settingGroup}>
-            <Animated.Text style={styles.settingLabel}>Tempo</Animated.Text>
-            <Animated.Text style={styles.settingValue}>{tempo} BPM</Animated.Text>
-            <View style={styles.sliderTrack}>
-              <View style={[styles.sliderFill, { width: `${((tempo - 60) / 140) * 100}%` }]} />
-              <View
-                style={[styles.sliderThumb, { left: `${((tempo - 60) / 140) * 100}%` }]}
-              />
-              <ScrollView
-                horizontal
-                style={styles.sliderHitArea}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.sliderHitContent}
-                onScroll={(e) => {
-                  const x = e.nativeEvent.contentOffset.x;
-                  const maxScroll = e.nativeEvent.contentSize.width - e.nativeEvent.layoutMeasurement.width;
-                  const ratio = maxScroll > 0 ? x / maxScroll : 0;
-                  setTempo(Math.round(60 + ratio * 140));
-                }}
-                scrollEventThrottle={16}
-              >
-                <View style={{ width: 200, height: 40 }} />
-              </ScrollView>
-            </View>
-          </View>
-
-          <View style={styles.octaveGroup}>
-            <Animated.Text style={styles.settingLabel}>Octave</Animated.Text>
-            <View style={styles.octaveControls}>
-              <TouchableOpacity
-                style={styles.octaveBtn}
-                onPress={() => adjustOctave(-1)}
-              >
-                <MaterialCommunityIcons name="minus" size={18} color={COLORS.white} />
-              </TouchableOpacity>
-              <Animated.Text style={styles.octaveValue}>{currentOctave}</Animated.Text>
-              <TouchableOpacity
-                style={styles.octaveBtn}
-                onPress={() => adjustOctave(1)}
-              >
-                <MaterialCommunityIcons name="plus" size={18} color={COLORS.white} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Recording Timeline */}
-        {recordedNotes.length > 0 && (
-          <View style={styles.timelineCard}>
-            <View style={styles.timelineHeader}>
-              <MaterialCommunityIcons
-                name="record"
-                size={16}
-                color={isRecording ? COLORS.error : COLORS.gray500}
-              />
-              <Animated.Text style={styles.timelineTitle}>
-                Recording Timeline
-              </Animated.Text>
-              {recordedNotes.length > 0 && (
-                <Tag label={`${recordedNotes.length} notes`} size="small" />
-              )}
-            </View>
-            <ScrollView
-              horizontal
-              ref={timelineScroll}
-              showsHorizontalScrollIndicator={false}
-              style={styles.timelineScroll}
-              contentContainerStyle={styles.timelineContent}
-            >
-              {recordedNotes.map((noteData, index) => {
-                const colorIndex = ALL_NOTES.findIndex(n => n.note === noteData.note) % NOTE_COLORS.length;
-                const barWidth = Math.max(30, (noteData.duration / 1000) * 50);
-                return (
-                  <View
-                    key={index}
-                    style={[
-                      styles.timelineBar,
-                      {
-                        backgroundColor: NOTE_COLORS[colorIndex],
-                        width: barWidth,
-                        left: (noteData.time / 10),
-                      },
-                    ]}
+            {/* White keys */}
+            {whiteKeys.map((n, i) => {
+              const w = (SCREEN_WIDTH - 32) / whiteKeys.length;
+              const isActive = activeKeys[n.note];
+              return (
+                <G key={n.note} onPress={(e) => handleKeyPress(n, e)}>
+                  <Rect x={i * w} y={0} width={w - 2} height={200} rx={4} fill={isActive ? 'url(#whiteKeyActive)' : 'url(#whiteKey)'} stroke="#D1CBC2" strokeWidth={0.5} />
+                  <Rect x={i * w} y={0} width={w - 2} height={200} rx={4} fill="url(#specularWhite)" />
+                  {isActive && (
+                    <>
+                      <Rect x={i * w + 2} y={185} width={w - 6} height={12} rx={6} fill="#7C3AED" opacity={0.5} />
+                      <Circle cx={i * w + w / 2} cy={195} r={14} fill="#7C3AED" opacity={0.15} />
+                    </>
+                  )}
+                  <Text
+                    x={i * w + w / 2}
+                    y={192}
+                    textAnchor="middle"
+                    fontSize={9}
+                    fill="#8B8580"
+                    fontWeight="500"
                   >
-                    <Animated.Text style={styles.timelineNoteText}>
-                      {noteData.note}
-                    </Animated.Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
+                    {n.note.replace('4','').replace('5','') + (KEY_MAP[i] ? ` [${KEY_MAP[i].toUpperCase()}]` : '')}
+                  </Text>
+                </G>
+              );
+            })}
+
+            {/* Black keys */}
+            {blackKeys.map((n, i) => {
+              const left = getBlackKeyLeft(i);
+              const isActive = activeKeys[n.note];
+              return (
+                <G key={n.note} onPress={(e) => handleKeyPress(n, e)}>
+                  <Rect x={left} y={0} width={((SCREEN_WIDTH - 32) / whiteKeys.length) * 0.62} height={125} rx={3} fill={isActive ? 'url(#blackKeyActive)' : 'url(#blackKey)'} stroke="#111" strokeWidth={0.5} />
+                  <Rect x={left} y={0} width={((SCREEN_WIDTH - 32) / whiteKeys.length) * 0.62} height={125} rx={3} fill="url(#specularBlack)" />
+                  {isActive && (
+                    <>
+                      <Rect x={left + 2} y={110} width={((SCREEN_WIDTH - 32) / whiteKeys.length) * 0.62 - 4} height={10} rx={5} fill="#7C3AED" opacity={0.6} />
+                      <Circle cx={left + ((SCREEN_WIDTH - 32) / whiteKeys.length) * 0.31} cy={118} r={12} fill="#7C3AED" opacity={0.2} />
+                    </>
+                  )}
+                </G>
+              );
+            })}
+          </Svg>
+        </View>
+
+        {/* Sustain & Reverb */}
+        <View style={styles.controlRow}>
+          <TouchableOpacity
+            style={[styles.ctrlBtn, sustainOn && styles.ctrlBtnActive]}
+            onPress={() => setSustain(s => !s)}
+          >
+            <Ionicons name={sustainOn ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={sustainOn ? '#10B981' : '#6B7280'} />
+            <Text style={[styles.ctrlBtnText, sustainOn && styles.ctrlBtnTextActive]}>Sustain</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.ctrlBtn, reverbOn && styles.ctrlBtnActive]}
+            onPress={() => setReverb(r => !r)}
+          >
+            <Ionicons name={reverbOn ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={reverbOn ? '#06B6D4' : '#6B7280'} />
+            <Text style={[styles.ctrlBtnText, reverbOn && styles.ctrlBtnTextActive]}>Reverb</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Preset Selector */}
+        <View style={styles.presetRow}>
+          {Object.keys(PRESETS).map(name => (
+            <TouchableOpacity
+              key={name}
+              style={[styles.presetBtn, preset === name && styles.presetBtnActive]}
+              onPress={() => setPreset(name)}
+            >
+              <Text style={[styles.presetBtnText, preset === name && styles.presetBtnTextActive]}>
+                {name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Record / Playback */}
+        <View style={styles.recordRow}>
+          <TouchableOpacity
+            style={[styles.recordBtn, recording && styles.recordBtnActive]}
+            onPress={recording ? stopRecording : startRecording}
+          >
+            <Ionicons name={recording ? 'stop' : 'radio'} size={20} color="#F43F5E" />
+            <Text style={styles.recordBtnText}>{recording ? 'Stop' : 'Record'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.recordBtn, playback && styles.recordBtnActive]}
+            disabled={playback || recordings.length === 0}
+            onPress={() => recordings.length > 0 && playRecording(recordings[recordings.length - 1])}
+          >
+            <Ionicons name="play" size={20} color="#10B981" />
+            <Text style={styles.recordBtnText}>Play</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Recordings List */}
+        {recordings.length > 0 && (
+          <View style={styles.recordingsSection}>
+            <Text style={styles.sectionTitle}>Recordings ({recordings.length})</Text>
+            {recordings.map((rec, idx) => (
+              <View key={rec.id} style={styles.recordingItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recTitle}>#{idx + 1} - {rec.preset}</Text>
+                  <Text style={styles.recSub}>{rec.date} | {rec.notes.length} notes</Text>
+                </View>
+                <TouchableOpacity onPress={() => playRecording(rec)} style={styles.recAction}>
+                  <Ionicons name="play" size={16} color="#10B981" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => deleteRecording(rec.id)} style={styles.recAction}>
+                  <Ionicons name="trash" size={16} color="#F43F5E" />
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
         )}
 
-        <View style={styles.bottomPadding} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1A1A2E',
-  },
-  header: {
-    paddingTop: 50,
-    paddingBottom: SPACING.xl,
-    borderBottomLeftRadius: BORDER_RADIUS.xxl,
-    borderBottomRightRadius: BORDER_RADIUS.xxl,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SPACING.lg,
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  recordingDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recordingDotInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: COLORS.error,
-  },
-  content: {
-    flex: 1,
-    padding: SPACING.lg,
-  },
-  noteDisplay: {
-    alignItems: 'center',
-    backgroundColor: '#2D2D44',
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.xl,
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: '#3D3D5C',
-  },
-  currentNote: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: COLORS.white,
-    letterSpacing: 2,
-  },
-  currentFreq: {
-    fontSize: 16,
-    color: COLORS.primary,
-    marginTop: SPACING.xs,
-    fontWeight: '600',
-  },
-  volumeMeter: {
-    width: '100%',
-    height: 4,
-    backgroundColor: '#3D3D5C',
-    borderRadius: 2,
-    marginTop: SPACING.md,
-    overflow: 'hidden',
-  },
-  volumeMeterFill: {
-    height: '100%',
-    backgroundColor: COLORS.primary,
-    borderRadius: 2,
-  },
-  pianoShadow: {
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.xl,
-    ...SHADOWS.large,
-  },
-  pianoContainer: {
-    height: KEY_HEIGHT + 10,
-    backgroundColor: '#1A1A2E',
-    borderRadius: BORDER_RADIUS.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#3D3D5C',
-  },
-  pianoScrollContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: SPACING.xs,
-    paddingBottom: 0,
-  },
-  whiteKeysRow: {
-    flexDirection: 'row',
-    height: KEY_HEIGHT,
-    position: 'relative',
-    zIndex: 1,
-  },
-  whiteKeyOuter: {
-    height: KEY_HEIGHT,
-    paddingHorizontal: 1,
-  },
-  whiteKeyTouchable: {
-    flex: 1,
-  },
-  whiteKeyInner: {
-    flex: 1,
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: SPACING.md,
-    borderWidth: 0.5,
-    borderColor: '#CCCCCC',
-  },
-  whiteKeyNoteLabel: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  whiteKeyNoteLabelActive: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
-  },
-  whiteKeyNoteText: {
-    fontSize: 7,
-    fontWeight: '700',
-    color: '#666666',
-  },
-  whiteKeyNoteTextActive: {
-    color: COLORS.white,
-  },
-  blackKeysOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    height: BLACK_KEY_HEIGHT,
-    zIndex: 10,
-  },
-  blackKeyOuter: {
-    position: 'absolute',
-    height: BLACK_KEY_HEIGHT,
-  },
-  blackKeyTouchable: {
-    flex: 1,
-  },
-  blackKeyInner: {
-    flex: 1,
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: SPACING.sm,
-    borderWidth: 0.5,
-    borderColor: '#000000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  blackKeyNoteLabel: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  blackKeyNoteLabelActive: {
-    backgroundColor: 'rgba(255,255,255,0.35)',
-  },
-  blackKeyNoteText: {
-    fontSize: 6,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.7)',
-  },
-  blackKeyNoteTextActive: {
-    color: COLORS.white,
-  },
-  controlsBar: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-  },
-  controlBtn: {
-    height: 52,
-    borderRadius: BORDER_RADIUS.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  recordBtn: {
-    flex: 1,
-    backgroundColor: '#3D3D5C',
-    gap: SPACING.xs,
-  },
-  recordBtnActive: {
-    backgroundColor: COLORS.error,
-  },
-  recordBtnDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.gray500,
-  },
-  recordBtnDotActive: {
-    backgroundColor: COLORS.white,
-  },
-  recordBtnText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  stopBtn: {
-    width: 52,
-    backgroundColor: '#3D3D5C',
-  },
-  playBtn: {
-    width: 52,
-    backgroundColor: COLORS.primary,
-  },
-  playBtnDisabled: {
-    backgroundColor: '#3D3D5C',
-    opacity: 0.5,
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  settingGroup: {
-    flex: 2,
-    backgroundColor: '#2D2D44',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: '#3D3D5C',
-  },
-  octaveGroup: {
-    flex: 1,
-    backgroundColor: '#2D2D44',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: '#3D3D5C',
-    alignItems: 'center',
-  },
-  settingLabel: {
-    fontSize: 12,
-    color: COLORS.gray500,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: SPACING.xs,
-  },
-  settingValue: {
-    fontSize: 14,
-    color: COLORS.white,
-    fontWeight: '700',
-    marginBottom: SPACING.sm,
-  },
-  sliderTrack: {
-    height: 40,
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  sliderFill: {
-    position: 'absolute',
-    height: 4,
-    backgroundColor: COLORS.primary,
-    borderRadius: 2,
-    left: 0,
-    top: 18,
-  },
-  sliderThumb: {
-    position: 'absolute',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: COLORS.white,
-    top: 12,
-    marginLeft: -8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  sliderHitArea: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  sliderHitContent: {
-    width: 200,
-  },
-  octaveControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.sm,
-  },
-  octaveBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#3D3D5C',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  octaveValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.white,
-    minWidth: 24,
-    textAlign: 'center',
-  },
-  timelineCard: {
-    backgroundColor: '#2D2D44',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: '#3D3D5C',
-  },
-  timelineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
-  },
-  timelineTitle: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.white,
-  },
-  timelineScroll: {
-    height: 50,
-  },
-  timelineContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  timelineBar: {
-    height: 36,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 28,
-  },
-  timelineNoteText: {
-    fontSize: 7,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  bottomPadding: {
-    height: 40,
-  },
+  container: { flex: 1, backgroundColor: '#090A0F' },
+  scrollContent: { paddingTop: Platform.OS === 'web' ? 20 : 50, paddingHorizontal: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(124,58,237,0.15)', justifyContent: 'center', alignItems: 'center' },
+  headerTitleWrap: { alignItems: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#F3F0FF', letterSpacing: 1 },
+  headerSub: { fontSize: 11, color: '#A78BFA', marginTop: 2 },
+  visualizerWrap: { height: 100, borderRadius: 12, marginBottom: 12, overflow: 'hidden' },
+  octaveRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  octaveLabel: { fontSize: 12, color: '#9CA3AF', fontWeight: '600' },
+  octaveButtons: { flexDirection: 'row', gap: 6 },
+  octaveBtn: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(30,30,50,0.6)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.2)' },
+  octaveBtnActive: { backgroundColor: 'rgba(124,58,237,0.25)', borderColor: '#7C3AED' },
+  octaveBtnText: { fontSize: 13, color: '#9CA3AF', fontWeight: '700' },
+  octaveBtnTextActive: { color: '#C4B5FD' },
+  noteDisplayRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 8, minHeight: 36, alignItems: 'center' },
+  noteChip: { backgroundColor: 'rgba(124,58,237,0.2)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignItems: 'center', borderWidth: 1, borderColor: '#7C3AED' },
+  noteChipText: { fontSize: 14, fontWeight: '800', color: '#C4B5FD' },
+  velLabel: { fontSize: 9, color: '#A78BFA', marginTop: 1 },
+  hintText: { fontSize: 12, color: '#6B7280', fontStyle: 'italic' },
+  pianoWrap: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#0E111A', borderWidth: 1, borderColor: 'rgba(124,58,237,0.2)', marginBottom: 12, paddingVertical: 8 },
+  pianoSvg: { alignSelf: 'center' },
+  controlRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 10 },
+  ctrlBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(30,30,50,0.6)', borderWidth: 1, borderColor: 'rgba(100,100,120,0.2)' },
+  ctrlBtnActive: { backgroundColor: 'rgba(124,58,237,0.15)', borderColor: 'rgba(124,58,237,0.3)' },
+  ctrlBtnText: { fontSize: 12, color: '#9CA3AF', fontWeight: '600' },
+  ctrlBtnTextActive: { color: '#C4B5FD' },
+  presetRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 14 },
+  presetBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, backgroundColor: 'rgba(30,30,50,0.6)', borderWidth: 1, borderColor: 'rgba(100,100,120,0.2)' },
+  presetBtnActive: { backgroundColor: 'rgba(6,182,212,0.2)', borderColor: '#06B6D4' },
+  presetBtnText: { fontSize: 12, color: '#9CA3AF', fontWeight: '700' },
+  presetBtnTextActive: { color: '#67E8F9' },
+  recordRow: { flexDirection: 'row', justifyContent: 'center', gap: 14, marginBottom: 14 },
+  recordBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(30,30,50,0.6)', borderWidth: 1, borderColor: 'rgba(100,100,120,0.2)' },
+  recordBtnActive: { backgroundColor: 'rgba(244,63,94,0.15)', borderColor: '#F43F5E' },
+  recordBtnText: { fontSize: 13, color: '#E5E7EB', fontWeight: '700' },
+  recordingsSection: { marginTop: 4, padding: 14, borderRadius: 14, backgroundColor: 'rgba(14,17,26,0.7)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.15)' },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#C4B5FD', marginBottom: 8 },
+  recordingItem: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 10, backgroundColor: 'rgba(30,30,50,0.5)', marginBottom: 6, borderWidth: 1, borderColor: 'rgba(100,100,120,0.15)' },
+  recTitle: { fontSize: 13, fontWeight: '700', color: '#E5E7EB' },
+  recSub: { fontSize: 10, color: '#9CA3AF', marginTop: 2 },
+  recAction: { padding: 8, marginLeft: 8 },
 });
 
 export default PianoScreen;
