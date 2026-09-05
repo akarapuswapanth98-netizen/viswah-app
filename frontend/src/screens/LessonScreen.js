@@ -11,7 +11,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
-import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 
 const LessonScreen = ({ route, navigation }) => {

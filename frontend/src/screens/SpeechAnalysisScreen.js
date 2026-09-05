@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensi
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
-import { GradientButton, Tag, ProgressBar } from '../components/UIComponents';
+import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
