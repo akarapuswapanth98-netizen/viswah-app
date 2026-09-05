@@ -1,9 +1,10 @@
 # Pydantic Schemas for API - Fixed
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+import json
 
 
 # ============ Shared Enums ============
@@ -84,6 +85,16 @@ class LessonResponse(BaseModel):
     lesson_type: LessonType
     duration_minutes: int = Field(..., ge=1)
     quiz_questions: Optional[List[dict]] = None
+
+    @field_validator('quiz_questions', mode='before')
+    @classmethod
+    def parse_quiz_questions(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
 
     class Config:
         from_attributes = True
