@@ -26,6 +26,13 @@ export const api = {
   vocalGuruTeach: (topic, guruId) => `${API_URL}/api/vocal-guru/teach/${topic}?guru_id=${guruId}`,
   vocalGuruSpeak: `${API_URL}/api/vocal-guru/speak`,
   vocalGuruAudio: (filename) => `${API_URL}/api/vocal-guru/audio/${filename}`,
+  speechExercises: `${API_URL}/api/speech/exercises`,
+  speechExercise: (id) => `${API_URL}/api/speech/exercises/${id}`,
+  speechAnalyzePitch: `${API_URL}/api/speech/analyze-pitch`,
+  speechAnalyzeVolume: `${API_URL}/api/speech/analyze-volume`,
+  speechScore: `${API_URL}/api/speech/score`,
+  speechAnalyzeSession: `${API_URL}/api/speech/analyze-session`,
+  speechUploadAudio: `${API_URL}/api/speech/upload-audio`,
 };
 
 const TOKEN_KEY = '@viswah_token';

@@ -74,6 +74,16 @@ const HomeScreen = ({ navigation }) => {
         <MaterialCommunityIcons name="chevron-right" size={24} color="white" />
       </TouchableOpacity>
 
+      {/* Speech Analysis Quick Access */}
+      <TouchableOpacity onPress={() => navigation.navigate('SpeechAnalysis')} style={styles.speechBanner}>
+        <MaterialCommunityIcons name="microphone" size={32} color="white" />
+        <View style={styles.guruBannerText}>
+          <Title style={styles.guruTitle}>Speech Analysis</Title>
+          <Paragraph style={styles.guruSub}>Analyze your voice in real-time</Paragraph>
+        </View>
+        <MaterialCommunityIcons name="chevron-right" size={24} color="white" />
+      </TouchableOpacity>
+
       <Searchbar placeholder="Search..." onChangeText={setSearchQuery} value={searchQuery} style={styles.search} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
@@ -115,7 +125,8 @@ const styles = StyleSheet.create({
   header: { padding: 20, backgroundColor: '#6200EE' },
   headerTitle: { color: 'white', fontSize: 24 },
   headerSub: { color: 'white', opacity: 0.8 },
-  guruBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#9C27B0', margin: 16, padding: 16, borderRadius: 12 },
+  guruBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#9C27B0', margin: 16, marginBottom: 8, padding: 16, borderRadius: 12 },
+  speechBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E91E63', marginHorizontal: 16, marginBottom: 16, padding: 16, borderRadius: 12 },
   guruBannerText: { flex: 1, marginLeft: 12 },
   guruTitle: { color: 'white', fontSize: 18 },
   guruSub: { color: 'white', opacity: 0.8, fontSize: 12 },
