@@ -6,9 +6,13 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
 // Glow particle burst on key press
-export const GlowBurst = ({ active, color = '#6C63FF', x = 0, y = 0, count = 6 }) => {
+export const GlowBurst = ({ active, color, x, y, count }) => {
+  const _color = color || '#6C63FF';
+  const _x = x || 0;
+  const _y = y || 0;
+  const _count = count || 6;
   const particles = useRef(
-    Array.from({ length: count }, () => ({
+    Array.from({ length: _count }, () => ({
       anim: new Animated.Value(0),
       offsetX: (Math.random() - 0.5) * 60,
       offsetY: -Math.random() * 50 - 10,
@@ -32,7 +36,7 @@ export const GlowBurst = ({ active, color = '#6C63FF', x = 0, y = 0, count = 6 }
   if (!active) return null;
 
   return (
-    <View style={[styles.glowBurstContainer, { left: x, top: y }]} pointerEvents="none">
+    <View style={[styles.glowBurstContainer, { left: _x, top: _y }]} pointerEvents="none">
       {particles.map((p, i) => (
         <Animated.View
           key={i}
@@ -42,7 +46,7 @@ export const GlowBurst = ({ active, color = '#6C63FF', x = 0, y = 0, count = 6 }
               width: p.size,
               height: p.size,
               borderRadius: p.size / 2,
-              backgroundColor: color,
+              backgroundColor: _color,
               opacity: p.anim.interpolate({
                 inputRange: [0, 0.3, 1],
                 outputRange: [0, 1, 0],
@@ -76,9 +80,12 @@ export const GlowBurst = ({ active, color = '#6C63FF', x = 0, y = 0, count = 6 }
 };
 
 // Frequency visualizer bars
-export const FrequencyBars = ({ values, color = '#6C63FF', barCount = 16, height = 60, style }) => {
+export const FrequencyBars = ({ values, color, barCount, height, style }) => {
+  const _color = color || '#6C63FF';
+  const _barCount = barCount || 16;
+  const _height = height || 60;
   const animatedValues = useRef(
-    Array.from({ length: barCount }, () => new Animated.Value(0.1))
+    Array.from({ length: _barCount }, () => new Animated.Value(0.1))
   ).current;
 
   useEffect(() => {
@@ -94,17 +101,17 @@ export const FrequencyBars = ({ values, color = '#6C63FF', barCount = 16, height
   }, [values]);
 
   return (
-    <View style={[styles.freqBarsContainer, { height }, style]} pointerEvents="none">
+    <View style={[styles.freqBarsContainer, { height: _height }, style]} pointerEvents="none">
       {animatedValues.map((anim, i) => (
         <Animated.View
           key={i}
           style={[
             styles.freqBar,
             {
-              backgroundColor: color,
+              backgroundColor: _color,
               height: anim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [4, height],
+                outputRange: [4, _height],
               }),
               opacity: anim.interpolate({
                 inputRange: [0, 0.3, 1],
@@ -148,44 +155,47 @@ export const GlassCard = ({ children, style, intensity = 'medium' }) => {
 };
 
 // Animated ring for score display
-export const ScoreRing = ({ score = 0, size = 120, color = '#6C63FF', animValue }) {
-  const circumference = Math.PI * (size - 12);
+export const ScoreRing = ({ score, size, color, animValue }) => {
+  const _score = score || 0;
+  const _size = size || 120;
+  const _color = color || '#6C63FF';
+  const circumference = Math.PI * (_size - 12);
   const strokeDashoffset = animValue
     ? animValue.interpolate({
         inputRange: [0, 1],
-        outputRange: [circumference, circumference * (1 - score / 100)],
+        outputRange: [circumference, circumference * (1 - _score / 100)],
       })
-    : circumference * (1 - score / 100);
+    : circumference * (1 - _score / 100);
 
   return (
-    <View style={{ width: size, height: size }} pointerEvents="none">
-      <Svg width={size} height={size}>
+    <View style={{ width: _size, height: _size }} pointerEvents="none">
+      <Svg width={_size} height={_size}>
         <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={(size - 12) / 2}
+          cx={_size / 2}
+          cy={_size / 2}
+          r={(_size - 12) / 2}
           stroke="rgba(255,255,255,0.1)"
           strokeWidth={6}
           fill="none"
         />
         <AnimatedCircle
-          cx={size / 2}
-          cy={size / 2}
-          r={(size - 12) / 2}
-          stroke={color}
+          cx={_size / 2}
+          cy={_size / 2}
+          r={(_size - 12) / 2}
+          stroke={_color}
           strokeWidth={6}
           fill="none"
           strokeDasharray={`${circumference}`}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          transform={`rotate(-90 ${_size / 2} ${_size / 2})`}
         />
       </Svg>
-      <View style={[styles.scoreRingInner, { width: size, height: size }]}>
-        <Animated.Text style={[styles.scoreRingText, { fontSize: size * 0.28 }]}>
-          {score}
+      <View style={[styles.scoreRingInner, { width: _size, height: _size }]}>
+        <Animated.Text style={[styles.scoreRingText, { fontSize: _size * 0.28 }]}>
+          {_score}
         </Animated.Text>
-        <Animated.Text style={[styles.scoreRingLabel, { fontSize: size * 0.1 }]}>
+        <Animated.Text style={[styles.scoreRingLabel, { fontSize: _size * 0.1 }]}>
           SCORE
         </Animated.Text>
       </View>
@@ -194,7 +204,11 @@ export const ScoreRing = ({ score = 0, size = 120, color = '#6C63FF', animValue 
 };
 
 // Waveform path for speech analysis
-export const WaveformPath = ({ amplitude = 0.5, width = 300, height = 60, color = '#6C63FF' }) {
+export const WaveformPath = ({ amplitude, width, height, color }) => {
+  const _amplitude = amplitude || 0.5;
+  const _width = width || 300;
+  const _height = height || 60;
+  const _color = color || '#6C63FF';
   const animValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -209,29 +223,31 @@ export const WaveformPath = ({ amplitude = 0.5, width = 300, height = 60, color 
   const points = [];
   const segments = 40;
   for (let i = 0; i <= segments; i++) {
-    const x = (i / segments) * width;
+    const px = (i / segments) * _width;
     const phase = (i / segments) * Math.PI * 4;
-    const y = height / 2 + Math.sin(phase) * (height / 2) * amplitude * 0.8;
-    points.push(`${i === 0 ? 'M' : 'L'} ${x} ${y}`);
+    const py = _height / 2 + Math.sin(phase) * (_height / 2) * _amplitude * 0.8;
+    points.push(`${i === 0 ? 'M' : 'L'} ${px} ${py}`);
   }
 
   return (
-    <View style={{ width, height }} pointerEvents="none">
-      <Svg width={width} height={height}>
+    <View style={{ width: _width, height: _height }} pointerEvents="none">
+      <Svg width={_width} height={_height}>
         <Defs>
           <LinearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={color} stopOpacity="0.6" />
-            <Stop offset="1" stopColor={color} stopOpacity="0" />
+            <Stop offset="0" stopColor={_color} stopOpacity="0.6" />
+            <Stop offset="1" stopColor={_color} stopOpacity="0" />
           </LinearGradient>
         </Defs>
-        <Path d={points.join(' ')} stroke={color} strokeWidth={2} fill="none" />
+        <Path d={points.join(' ')} stroke={_color} strokeWidth={2} fill="none" />
       </Svg>
     </View>
   );
 };
 
 // Ripple effect on touch
-export const RippleEffect = ({ active, color = '#6C63FF', size = 100 }) => {
+export const RippleEffect = ({ active, color, size }) => {
+  const _color = color || '#6C63FF';
+  const _size = size || 100;
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -248,15 +264,15 @@ export const RippleEffect = ({ active, color = '#6C63FF', size = 100 }) => {
   if (!active) return null;
 
   return (
-    <View style={[styles.rippleContainer, { width: size, height: size }]} pointerEvents="none">
+    <View style={[styles.rippleContainer, { width: _size, height: _size }]} pointerEvents="none">
       <Animated.View
         style={[
           styles.ripple,
           {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            borderColor: color,
+            width: _size,
+            height: _size,
+            borderRadius: _size / 2,
+            borderColor: _color,
             transform: [{ scale: anim }],
             opacity: anim.interpolate({
               inputRange: [0, 1],

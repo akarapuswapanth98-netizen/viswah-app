@@ -57,7 +57,7 @@ const LESSON_STEPS = {
   breathing: [
     { id: 1, text: 'Stand upright with shoulders relaxed', tip: 'Keep your spine straight for optimal airflow.' },
     { id: 2, text: 'Inhale slowly through your nose for 4 counts', tip: 'Feel your belly expand as air fills your lungs.' },
-    { id: 3, text: 'Hold your breath gently for 2 counts', tip: 'Don't force — keep it comfortable.' },
+    { id: 3, text: 'Hold your breath gently for 2 counts', tip: 'Don\'t force — keep it comfortable.' },
     { id: 4, text: 'Exhale smoothly through your mouth for 6 counts', tip: 'Control the release for sustained vocal support.' },
     { id: 5, text: 'Repeat 5 times, gradually extending each phase', tip: 'Consistency builds breath capacity over time.' },
   ],
