@@ -40,6 +40,7 @@ export const api = {
   lyricsImprove: `${API_URL}/api/lyrics/improve`,
   lyricsAnalyze: `${API_URL}/api/lyrics/analyze`,
   lyricsFormat: `${API_URL}/api/lyrics/format`,
+  musicologyGenres: `${API_URL}/api/v1/musicology/genres`,
 };
 
 const TOKEN_KEY = '@viswah_token';

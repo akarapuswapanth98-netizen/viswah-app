@@ -19,7 +19,6 @@ const TopBar = ({ username, onProfilePress }) => {
 
         <TouchableOpacity style={styles.iconButton}>
           <MaterialCommunityIcons name="bell-outline" size={20} color={COLORS.textSecondary} />
-          <View style={styles.notifDot} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.profileButton} onPress={onProfilePress}>

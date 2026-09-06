@@ -359,7 +359,7 @@ function MainNavigator() {
         </View>
       )}
       <View style={styles.desktopMain}>
-        {IS_DESKTOP && <TopBar username="Student" />}
+        {IS_DESKTOP && <TopBar username="Student" onProfilePress={() => navRef.current?.navigate('Profile')} />}
         <View style={styles.desktopContent}>
           <NavigationContainer
             ref={navRef}

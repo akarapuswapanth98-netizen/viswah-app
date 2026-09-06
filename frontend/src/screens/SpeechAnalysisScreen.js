@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 import { WaveformPath, FrequencyBars, ScoreRing } from '../components/VisualEffects';
+import { audioService } from '../services/AudioService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -104,6 +104,68 @@ const SpeechAnalysisScreen = ({ navigation }) => {
   const currentNoteIndexRef = useRef(0);
   const stoppingRef = useRef(false);
 
+  const audioCtxRef = useRef(null);
+  const analyserRef = useRef(null);
+  const micStreamRef = useRef(null);
+  const animFrameRef = useRef(null);
+
+  const initMic = async () => {
+    try {
+      if (typeof window === 'undefined' || !navigator.mediaDevices) return false;
+      audioCtxRef.current = audioService.getContext();
+      if (!audioCtxRef.current) return false;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      micStreamRef.current = stream;
+      const source = audioCtxRef.current.createMediaStreamSource(stream);
+      analyserRef.current = audioCtxRef.current.createAnalyser();
+      analyserRef.current.fftSize = 2048;
+      analyserRef.current.smoothingTimeConstant = 0.8;
+      source.connect(analyserRef.current);
+      return true;
+    } catch (e) {
+      console.warn('Mic init failed, using simulated data:', e.message);
+      return false;
+    }
+  };
+
+  const stopMicStream = () => {
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(function(t) { t.stop(); });
+      micStreamRef.current = null;
+    }
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+  };
+
+  const readMicFrame = () => {
+    if (!analyserRef.current || !isRecordingRef.current) return;
+    const timeData = new Float32Array(analyserRef.current.fftSize);
+    analyserRef.current.getFloatTimeDomainData(timeData);
+    let sum = 0;
+    for (let i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
+    const rms = Math.sqrt(sum / timeData.length);
+    const vol = Math.min(1, rms * 4);
+    setVolume(vol);
+    setWaveAmplitude(vol);
+
+    const freqData = new Float32Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getFloatFrequencyData(freqData);
+    let maxVal = -Infinity;
+    let maxIdx = 0;
+    for (let i = 2; i < freqData.length; i++) {
+      if (freqData[i] > maxVal) { maxVal = freqData[i]; maxIdx = i; }
+    }
+    const sr = audioCtxRef.current.sampleRate;
+    const freq = (maxIdx * sr) / analyserRef.current.fftSize;
+    if (freq > 60 && freq < 2000 && maxVal > -60) {
+      setCurrentPitch(freq);
+      setDetectedNote(getNoteName(freq));
+    }
+    animFrameRef.current = requestAnimationFrame(readMicFrame);
+  };
+
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     return () => {
@@ -111,6 +173,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
       if (pitchIntervalRef.current) clearInterval(pitchIntervalRef.current);
       if (noteAdvanceRef.current) clearInterval(noteAdvanceRef.current);
       if (volumeIntervalRef.current) clearInterval(volumeIntervalRef.current);
+      stopMicStream();
     };
   }, []);
 
@@ -160,16 +223,21 @@ const SpeechAnalysisScreen = ({ navigation }) => {
     pulseAnim.setValue(1);
   };
 
-  const handleStartRecording = () => {
+  const handleStartRecording = async () => {
     if (!selectedExercise) return;
+    const micOk = await initMic();
+    if (micOk) animFrameRef.current = requestAnimationFrame(readMicFrame);
+
     setIsRecording(true);
     isRecordingRef.current = true;
     currentNoteIndexRef.current = 0;
     setResults(null);
     setElapsedTime(0);
     setCurrentNoteIndex(0);
-    setDetectedNote('--');
-    setVolume(0);
+    if (!micOk) {
+      setDetectedNote('--');
+      setVolume(0);
+    }
     scoreRingAnim.setValue(0);
     setResultSlideAnims([]);
 
@@ -182,22 +250,24 @@ const SpeechAnalysisScreen = ({ navigation }) => {
       setElapsedTime((prev) => prev + 1);
     }, 1000);
 
-    pitchIntervalRef.current = setInterval(() => {
-      if (!isRecordingRef.current) return;
-      const targetNote = selectedExercise.notes[currentNoteIndexRef.current] || 'C4';
-      const baseFreq = NOTE_FREQUENCIES[targetNote] || 261.63;
-      const jitter = (Math.random() - 0.5) * 40;
-      const freq = Math.max(100, baseFreq + jitter);
-      setCurrentPitch(freq);
-      setDetectedNote(getNoteName(freq));
-    }, 100);
+    if (!micOk) {
+      pitchIntervalRef.current = setInterval(() => {
+        if (!isRecordingRef.current) return;
+        const targetNote = selectedExercise.notes[currentNoteIndexRef.current] || 'C4';
+        const baseFreq = NOTE_FREQUENCIES[targetNote] || 261.63;
+        const jitter = (Math.random() - 0.5) * 40;
+        const freq = Math.max(100, baseFreq + jitter);
+        setCurrentPitch(freq);
+        setDetectedNote(getNoteName(freq));
+      }, 100);
 
-    volumeIntervalRef.current = setInterval(() => {
-      if (!isRecordingRef.current) return;
-      const v = Math.random() * 0.5 + 0.3;
-      setVolume(v);
-      setWaveAmplitude(v);
-    }, 150);
+      volumeIntervalRef.current = setInterval(() => {
+        if (!isRecordingRef.current) return;
+        const v = Math.random() * 0.5 + 0.3;
+        setVolume(v);
+        setWaveAmplitude(v);
+      }, 150);
+    }
 
     noteAdvanceRef.current = setInterval(() => {
       if (!isRecordingRef.current || stoppingRef.current) return;
@@ -241,6 +311,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
     if (pitchIntervalRef.current) clearInterval(pitchIntervalRef.current);
     if (noteAdvanceRef.current) clearInterval(noteAdvanceRef.current);
     if (volumeIntervalRef.current) clearInterval(volumeIntervalRef.current);
+    stopMicStream();
 
     try {
       const res = await authFetch(api.speechScore, {
@@ -449,16 +520,15 @@ const SpeechAnalysisScreen = ({ navigation }) => {
             <Animated.View
               style={[styles.micButtonAnimated, { transform: [{ scale: pulseAnim }] }]}
             >
-              <LinearGradient
-                colors={isRecording ? ['#F44336', '#E53935'] : [COLORS.gray200, COLORS.gray300]}
-                style={styles.micButtonGradient}
+              <View
+                style={[styles.micButtonGradient, { background: isRecording ? 'linear-gradient(135deg, #EF4444, #DC2626)' : 'linear-gradient(135deg, rgba(15,18,30,0.9), rgba(26,29,46,0.9))' }]}
               >
                 <MaterialCommunityIcons
                   name={isRecording ? 'microphone' : 'microphone-outline'}
                   size={48}
-                  color={isRecording ? COLORS.white : COLORS.gray500}
+                  color={isRecording ? COLORS.white : COLORS.textSecondary}
                 />
-              </LinearGradient>
+              </View>
             </Animated.View>
           </TouchableOpacity>
 
@@ -533,7 +603,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
               <View style={styles.noteResultInfo}>
                 <View style={styles.noteResultNotes}>
                   <Text style={styles.noteResultTarget}>{detail.target}</Text>
-                  <MaterialCommunityIcons name="arrow-right" size={16} color={COLORS.gray400} />
+                  <MaterialCommunityIcons name="arrow-right" size={16} color={COLORS.textMuted} />
                   <Text style={styles.noteResultActual}>{detail.actual}</Text>
                 </View>
                 <View style={styles.noteResultMeta}>
@@ -585,7 +655,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient {...createGradient(COLORS.gradient.sunset)} style={styles.header}>
+      <View style={[styles.header, { background: 'linear-gradient(135deg, rgba(239,68,68,0.25) 0%, rgba(249,115,22,0.25) 50%, rgba(234,179,8,0.15) 100%)' }]}>
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
@@ -595,7 +665,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
             <Text style={styles.headerSubtitle}>Vocal Practice Tool</Text>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {!selectedExercise && !results && (
@@ -707,7 +777,7 @@ const styles = StyleSheet.create({
   },
   exerciseCardNotes: {
     fontSize: 12,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
   },
   recordingContainer: {
     alignItems: 'center',
@@ -728,7 +798,7 @@ const styles = StyleSheet.create({
   },
   targetNoteLabel: {
     fontSize: 13,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
   },
   targetNoteGlow: {
@@ -744,7 +814,7 @@ const styles = StyleSheet.create({
   },
   targetNotePosition: {
     fontSize: 14,
-    color: COLORS.gray600,
+    color: COLORS.textSecondary,
     marginTop: SPACING.sm,
   },
   noteSequenceContainer: {
@@ -760,7 +830,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.gray200,
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -776,7 +846,7 @@ const styles = StyleSheet.create({
   noteDotLabel: {
     fontSize: 9,
     fontWeight: '700',
-    color: COLORS.gray600,
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   noteDotLabelLight: {
@@ -785,7 +855,7 @@ const styles = StyleSheet.create({
   positionIndicator: {
     width: '100%',
     height: 4,
-    backgroundColor: COLORS.gray200,
+    backgroundColor: COLORS.surface,
     borderRadius: 2,
     marginTop: SPACING.sm,
     position: 'relative',
@@ -814,13 +884,13 @@ const styles = StyleSheet.create({
   },
   volumeMeterLabel: {
     fontSize: 11,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     fontWeight: '600',
   },
   volumeMeterTrack: {
     width: 8,
     height: 120,
-    backgroundColor: COLORS.gray200,
+    backgroundColor: COLORS.surface,
     borderRadius: 4,
     overflow: 'hidden',
     justifyContent: 'flex-end',
@@ -876,7 +946,7 @@ const styles = StyleSheet.create({
   },
   realTimePitchFreq: {
     fontSize: 12,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
   },
   timerSide: {
     alignItems: 'center',
@@ -889,7 +959,7 @@ const styles = StyleSheet.create({
   },
   timerLabel: {
     fontSize: 11,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     fontWeight: '600',
   },
   recordingControls: {
@@ -899,7 +969,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
   },
   cancelBtnText: {
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -958,7 +1028,7 @@ const styles = StyleSheet.create({
   },
   scoreLabel: {
     fontSize: 12,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   breakdownTitle: {
@@ -1018,7 +1088,7 @@ const styles = StyleSheet.create({
   },
   noteResultCents: {
     fontSize: 12,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
   },
   flatCents: {
     color: COLORS.info,

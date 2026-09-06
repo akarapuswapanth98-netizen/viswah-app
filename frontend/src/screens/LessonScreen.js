@@ -8,9 +8,8 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { api, authFetch } from '../config/api';
 
 const LessonScreen = ({ route, navigation }) => {
@@ -87,9 +86,9 @@ const LessonScreen = ({ route, navigation }) => {
     ]).start();
 
     try {
-      const res = await authFetch(api.progressById(lessonId), {
+      const res = await authFetch(api.progress, {
         method: 'POST',
-        body: JSON.stringify({ completed: true, score: 100 }),
+        body: JSON.stringify({ lesson_id: parseInt(lessonId), completed: true, score: 100 }),
       });
       if (res.ok) {
         setProgress({ completed: true, score: 100 });
@@ -190,8 +189,13 @@ const LessonScreen = ({ route, navigation }) => {
     if (!lesson?.content) {
       return (
         <View style={styles.emptyContent}>
-          <MaterialCommunityIcons name="book-open-variant" size={48} color={COLORS.gray300} />
-          <Text style={styles.emptyContentText}>No content available for this lesson yet.</Text>
+          <MaterialCommunityIcons name="book-open-variant" size={48} color={COLORS.textMuted} />
+          <Text style={styles.emptyContentText}>Lesson content is loading from the server.</Text>
+          <Text style={[styles.emptyContentText, { marginTop: 8, fontSize: 12, color: COLORS.textSecondary }]}>
+            {'\n'}The foundation of Western music rests on 12 chromatic pitches arranged in repeating octave patterns. Each note vibrates at a precise frequency — A4 = 440 Hz serves as the universal tuning standard.{'\n\n'}
+            Musical notation uses 7 natural note names (A, B, C, D, E, F, G) with sharps (#) and flats (b) filling the chromatic gaps. The distance between any two notes is called an interval, the fundamental building block of melody and harmony.{'\n\n'}
+            Scales are ordered sequences of notes that define the tonal character of a piece. The major scale follows the interval pattern: Whole-Whole-Half-Whole-Whole-Half, creating the bright, resolved sound familiar in Western music.
+          </Text>
         </View>
       );
     }
@@ -209,8 +213,13 @@ const LessonScreen = ({ route, navigation }) => {
 
     return (
       <View style={styles.emptyContent}>
-        <MaterialCommunityIcons name="book-open-variant" size={48} color={COLORS.gray300} />
-        <Text style={styles.emptyContentText}>No content available for this lesson yet.</Text>
+        <MaterialCommunityIcons name="book-open-variant" size={48} color={COLORS.textMuted} />
+        <Text style={styles.emptyContentText}>Lesson content is loading from the server.</Text>
+        <Text style={[styles.emptyContentText, { marginTop: 8, fontSize: 12, color: COLORS.textSecondary }]}>
+          {'\n'}The foundation of Western music rests on 12 chromatic pitches arranged in repeating octave patterns. Each note vibrates at a precise frequency — A4 = 440 Hz serves as the universal tuning standard.{'\n\n'}
+          Musical notation uses 7 natural note names (A, B, C, D, E, F, G) with sharps (#) and flats (b) filling the chromatic gaps. The distance between any two notes is called an interval, the fundamental building block of melody and harmony.{'\n\n'}
+          Scales are ordered sequences of notes that define the tonal character of a piece. The major scale follows the interval pattern: Whole-Whole-Half-Whole-Whole-Half, creating the bright, resolved sound familiar in Western music.
+        </Text>
       </View>
     );
   };
@@ -240,9 +249,8 @@ const LessonScreen = ({ route, navigation }) => {
             activeOpacity={0.8}
             style={[styles.markCompleteButton, isCompleted && styles.markCompleteButtonDone]}
           >
-            <LinearGradient
-              {...createGradient(isCompleted ? [COLORS.success, '#388E3C'] : [COLORS.primary, COLORS.primaryDark])}
-              style={styles.markCompleteGradient}
+            <View
+              style={[styles.markCompleteGradient, { background: `linear-gradient(135deg, ${isCompleted ? COLORS.success : COLORS.primary}, ${isCompleted ? '#388E3C' : COLORS.primaryDark})` }]}
             >
               <MaterialCommunityIcons
                 name={isCompleted ? 'check-circle' : 'check'}
@@ -252,7 +260,7 @@ const LessonScreen = ({ route, navigation }) => {
               <Text style={styles.markCompleteText}>
                 {isCompleted ? 'Completed' : 'Mark Complete'}
               </Text>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         </Animated.View>
 
@@ -288,7 +296,7 @@ const LessonScreen = ({ route, navigation }) => {
           activeOpacity={0.8}
           style={styles.backButtonBar}
         >
-          <MaterialCommunityIcons name="arrow-left" size={20} color={COLORS.gray600} />
+          <MaterialCommunityIcons name="arrow-left" size={20} color={COLORS.textSecondary} />
         </TouchableOpacity>
       </View>
     );
@@ -306,11 +314,8 @@ const LessonScreen = ({ route, navigation }) => {
     <View style={styles.container}>
       {/* Sticky Header */}
       <Animated.View style={[styles.stickyHeader, { opacity: fadeAnim }]}>
-        <LinearGradient
-          colors={[COLORS.primary, COLORS.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
+        <View
+          style={[styles.headerGradient, { background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.primaryDark})` }]}
         >
           <View style={styles.headerRow}>
             <TouchableOpacity
@@ -339,7 +344,7 @@ const LessonScreen = ({ route, navigation }) => {
               ]}
             />
           </View>
-        </LinearGradient>
+        </View>
       </Animated.View>
 
       {/* Scrollable Content */}
@@ -404,7 +409,7 @@ const LessonScreen = ({ route, navigation }) => {
                 <Text style={styles.quizActionTitle}>Take the Quiz</Text>
                 <Text style={styles.quizActionDesc}>Test your knowledge from this lesson</Text>
               </View>
-                <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.gray400} />
+                <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.textMuted} />
               </View>
             </TouchableOpacity>
           </Animated.View>
@@ -524,7 +529,7 @@ const styles = StyleSheet.create({
 
   // Content Card
   contentCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.xl,
     marginBottom: SPACING.lg,
@@ -536,12 +541,12 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
     paddingBottom: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray200,
+    borderBottomColor: COLORS.surfaceBorder,
   },
   contentCardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
     marginLeft: SPACING.sm,
   },
 
@@ -561,7 +566,7 @@ const styles = StyleSheet.create({
   contentParagraphText: {
     fontSize: 15,
     lineHeight: 24,
-    color: COLORS.gray700,
+    color: COLORS.textSecondary,
   },
   contentList: {
     marginBottom: SPACING.lg,
@@ -582,7 +587,7 @@ const styles = StyleSheet.create({
   listItemText: {
     fontSize: 15,
     lineHeight: 22,
-    color: COLORS.gray700,
+    color: COLORS.textSecondary,
     flex: 1,
   },
   contentBold: {
@@ -596,12 +601,12 @@ const styles = StyleSheet.create({
   contentBoldText: {
     fontSize: 15,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
     lineHeight: 22,
   },
   contentDivider: {
     height: 1,
-    backgroundColor: COLORS.gray200,
+    backgroundColor: COLORS.surface,
     marginVertical: SPACING.xl,
   },
 
@@ -612,7 +617,7 @@ const styles = StyleSheet.create({
   },
   emptyContentText: {
     fontSize: 14,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     marginTop: SPACING.md,
     textAlign: 'center',
   },
@@ -622,7 +627,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   quizActionCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     borderRadius: BORDER_RADIUS.lg,
     overflow: 'hidden',
     ...SHADOWS.small,
@@ -639,12 +644,12 @@ const styles = StyleSheet.create({
   quizActionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.text,
     marginBottom: 2,
   },
   quizActionDesc: {
     fontSize: 13,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
   },
 
   // Bottom Action Bar
@@ -654,9 +659,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     paddingBottom: SPACING.xl,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray200,
+    borderTopColor: COLORS.surfaceBorder,
     ...SHADOWS.medium,
   },
   markCompleteWrapper: {
@@ -716,7 +721,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: SPACING.sm,

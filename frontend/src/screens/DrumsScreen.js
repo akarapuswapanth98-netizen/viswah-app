@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AudioVisualizer3D from '../components/AudioVisualizer3D';
 import { getAuthToken } from '../config/api';
+import { audioService } from '../services/AudioService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -54,7 +55,7 @@ const PAD_GRID = [
   [6, 7, 8],
 ];
 
-const DrumsScreen = ({ onNavigate }) => {
+const DrumsScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [pattern, setPattern] = useState('basic');
   const [bpm, setBpm] = useState(120);
@@ -82,6 +83,7 @@ const DrumsScreen = ({ onNavigate }) => {
   const rippleAnims = useRef({}).current;
 
   const getAudioContext = useCallback(() => {
+    if (typeof window === 'undefined') return null;
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
       audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioCtxRef.current.createAnalyser();
@@ -98,6 +100,7 @@ const DrumsScreen = ({ onNavigate }) => {
 
   const playPadSound = useCallback((padId, velocity = 0.8) => {
     const ctx = getAudioContext();
+    if (!ctx) return;
     const now = ctx.currentTime;
     const sound = PAD_SOUNDS.find(s => s.id === padId);
     if (!sound) return;
@@ -224,6 +227,8 @@ const DrumsScreen = ({ onNavigate }) => {
   }, [playPadSound]);
 
   const handlePadPress = useCallback((padId, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (e && e.preventDefault) e.preventDefault();
     const touch = e?.nativeEvent?.locationY || 0;
     const padHeight = 100;
     const velocity = Math.min(1, Math.max(0.2, 1 - touch / padHeight + 0.4));
@@ -236,7 +241,7 @@ const DrumsScreen = ({ onNavigate }) => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => onNavigate('home')} style={styles.backBtn}>
+          <TouchableOpacity onPress={(e) => { if(e.stopPropagation) e.stopPropagation(); navigation.navigate('Home'); }} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#C4B5FD" />
           </TouchableOpacity>
           <View style={styles.headerTitleWrap}>
@@ -287,6 +292,7 @@ const DrumsScreen = ({ onNavigate }) => {
                       isBouncing && styles.mpcPadBounce,
                     ]}
                     activeOpacity={0.85}
+                    onPressIn={(e) => { if(e.stopPropagation) e.stopPropagation(); }}
                     onPress={(e) => handlePadPress(sound.id, e)}
                   >
                     {/* LED perimeter ring */}

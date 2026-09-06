@@ -1,17 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Animated,
-  Easing,
-  Dimensions,
-  Platform,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing, Dimensions, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { GradientButton, ProgressBar } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 
@@ -173,21 +163,31 @@ const QuizScreen = ({ route, navigation }) => {
         if (questions.length > 0) {
           setQuiz({
             title: lessonTitle || 'Quiz',
-            questions: questions.map((q, i) => ({
-              id: i,
-              question: q.question,
-              options: q.options || [],
-              correct: q.correct_answer || 0,
-            })),
+            questions: questions.map((q, i) => {
+              const correctVal = q.correct_answer;
+              let correctIdx = 0;
+              if (typeof correctVal === 'number') {
+                correctIdx = correctVal;
+              } else if (typeof correctVal === 'string' && q.options) {
+                const found = q.options.findIndex(opt => opt === correctVal || opt.toLowerCase() === correctVal.toLowerCase());
+                correctIdx = found >= 0 ? found : 0;
+              }
+              return {
+                id: i,
+                question: q.question,
+                options: q.options || [],
+                correct: correctIdx,
+              };
+            }),
           });
         } else {
           setQuiz({
             title: lessonTitle || 'Quiz',
             questions: [
-              { id: 0, question: 'What is the main topic of this lesson?', options: ['Music theory', 'Practice', 'Performance', 'All of the above'], correct: 3 },
-              { id: 1, question: 'How often should you practice?', options: ['Daily', 'Weekly', 'Monthly', 'Never'], correct: 0 },
-              { id: 2, question: 'Which skill is most important?', options: ['Reading', 'Listening', 'Timing', 'All of the above'], correct: 3 },
-              { id: 3, question: 'What helps you improve fastest?', options: ['Random practice', 'Focused practice', 'No practice', 'Watching others'], correct: 1 },
+              { id: 0, question: 'How many natural notes are in the standard musical alphabet?', options: ['5', '6', '7', '8'], correct: 2 },
+              { id: 1, question: 'What is the standard concert pitch frequency for A4?', options: ['420 Hz', '440 Hz', '460 Hz', '480 Hz'], correct: 1 },
+              { id: 2, question: 'Which interval is considered the most consonant?', options: ['Minor 2nd', 'Major 3rd', 'Octave', 'Tritone'], correct: 2 },
+              { id: 3, question: 'What does the term "dynamics" refer to in music?', options: ['Speed of tempo', 'Volume/loudness', 'Key signature', 'Time signature'], correct: 1 },
             ],
           });
         }
@@ -381,7 +381,7 @@ const QuizScreen = ({ route, navigation }) => {
     return (
       <View style={styles.container}>
         <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="quiz" size={64} color={COLORS.gray300} />
+          <MaterialCommunityIcons name="quiz" size={64} color={COLORS.textMuted} />
           <Animated.Text style={styles.emptyTitle}>No Quiz Available</Animated.Text>
           <Animated.Text style={styles.emptySubtitle}>This lesson doesn't have a quiz yet</Animated.Text>
           <GradientButton title="Go Back" onPress={() => navigation.goBack()} icon="arrow-left" style={styles.emptyButton} />
@@ -411,9 +411,8 @@ const QuizScreen = ({ route, navigation }) => {
 
     return (
       <View style={styles.container}>
-        <LinearGradient
-          colors={isPassed ? COLORS.gradient.ocean : COLORS.gradient.sunset}
-          style={styles.resultGradient}
+        <View
+          style={[styles.resultGradient, { background: isPassed ? 'linear-gradient(135deg, #0EA5E9, #06B6D4, #10B981)' : 'linear-gradient(135deg, #EF4444, #F97316, #EAB308)' }]}
         >
           {isPassed && (
             <View style={styles.confettiContainer}>
@@ -482,11 +481,11 @@ const QuizScreen = ({ route, navigation }) => {
                 <Animated.Text style={styles.reviewTitle}>Question Review</Animated.Text>
                 {answers.map((answer, index) => (
                   <View key={index} style={styles.reviewItem}>
-                    <View style={[styles.reviewIcon, { backgroundColor: answer.isCorrect ? '#4CAF5020' : '#F4433620' }]}>
+                    <View style={[styles.reviewIcon, { backgroundColor: answer.isCorrect ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)' }]}>
                       <MaterialCommunityIcons
                         name={answer.isCorrect ? 'check' : 'close'}
                         size={18}
-                        color={answer.isCorrect ? '#4CAF50' : '#F44336'}
+                        color={answer.isCorrect ? COLORS.success : COLORS.error}
                       />
                     </View>
                     <View style={styles.reviewContent}>
@@ -499,7 +498,7 @@ const QuizScreen = ({ route, navigation }) => {
                         </Animated.Text>
                       )}
                       {answer.selected === null && (
-                        <Animated.Text style={[styles.reviewAnswer, { color: COLORS.gray400 }]}>
+                        <Animated.Text style={[styles.reviewAnswer, { color: COLORS.textMuted }]}>
                           No answer (time expired)
                         </Animated.Text>
                       )}
@@ -540,7 +539,7 @@ const QuizScreen = ({ route, navigation }) => {
               <View style={{ height: 60 }} />
             </View>
           </ScrollView>
-        </LinearGradient>
+        </View>
       </View>
     );
   }
@@ -553,9 +552,8 @@ const QuizScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[COLORS.primary, COLORS.primaryDark]}
-        style={styles.header}
+      <View
+        style={[styles.header, { background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.primaryDark})` }]}
       >
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -600,7 +598,7 @@ const QuizScreen = ({ route, navigation }) => {
             backgroundColor="rgba(255,255,255,0.3)"
           />
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View
@@ -625,10 +623,10 @@ const QuizScreen = ({ route, navigation }) => {
             const showWrong = answered && isSelected && !isCorrect;
 
             let bgColor = COLORS.white;
-            let borderColor = COLORS.gray200;
-            let textColor = COLORS.gray700;
-            let letterBg = COLORS.gray100;
-            let letterColor = COLORS.gray600;
+let borderColor = COLORS.surfaceBorder;
+  let textColor = COLORS.textSecondary;
+  let letterBg = COLORS.surface;
+  let letterColor = COLORS.textSecondary;
 
             if (isSelected && !answered) {
               bgColor = `${COLORS.primary}15`;
@@ -639,18 +637,18 @@ const QuizScreen = ({ route, navigation }) => {
             }
 
             if (showCorrect) {
-              bgColor = '#4CAF5020';
-              borderColor = '#4CAF50';
-              textColor = '#4CAF50';
-              letterBg = '#4CAF50';
+              bgColor = 'rgba(34,197,94,0.12)';
+              borderColor = COLORS.success;
+              textColor = COLORS.success;
+              letterBg = COLORS.success;
               letterColor = COLORS.white;
             }
 
             if (showWrong) {
-              bgColor = '#F4433620';
-              borderColor = '#F44336';
-              textColor = '#F44336';
-              letterBg = '#F44336';
+              bgColor = 'rgba(239,68,68,0.12)';
+              borderColor = COLORS.error;
+              textColor = COLORS.error;
+              letterBg = COLORS.error;
               letterColor = COLORS.white;
             }
 
@@ -683,10 +681,10 @@ const QuizScreen = ({ route, navigation }) => {
                     {option}
                   </Animated.Text>
                   {showCorrect && (
-                    <MaterialCommunityIcons name="check-circle" size={20} color="#4CAF50" style={styles.optionStatusIcon} />
+                    <MaterialCommunityIcons name="check-circle" size={20} color={COLORS.success} style={styles.optionStatusIcon} />
                   )}
                   {showWrong && (
-                    <MaterialCommunityIcons name="close-circle" size={20} color="#F44336" style={styles.optionStatusIcon} />
+                    <MaterialCommunityIcons name="close-circle" size={20} color={COLORS.error} style={styles.optionStatusIcon} />
                   )}
                 </TouchableOpacity>
               </Animated.View>
@@ -703,7 +701,7 @@ const QuizScreen = ({ route, navigation }) => {
             <MaterialCommunityIcons
               name="chevron-left"
               size={20}
-              color={currentIndex === 0 ? COLORS.gray300 : COLORS.primary}
+              color={currentIndex === 0 ? COLORS.textMuted : COLORS.primary}
             />
             <Animated.Text
               style={[styles.navButtonText, currentIndex === 0 && styles.navButtonTextDisabled]}
@@ -725,7 +723,7 @@ const QuizScreen = ({ route, navigation }) => {
             <MaterialCommunityIcons
               name={isLastQuestion ? 'check' : 'chevron-right'}
               size={20}
-              color={!answered ? COLORS.gray300 : COLORS.white}
+              color={!answered ? COLORS.textMuted : COLORS.white}
             />
           </TouchableOpacity>
         </View>
@@ -755,12 +753,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
     marginTop: SPACING.lg,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     marginTop: SPACING.sm,
     marginBottom: SPACING.xl,
   },
@@ -835,7 +833,7 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   questionCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.xl,
     marginBottom: SPACING.lg,
@@ -844,7 +842,7 @@ const styles = StyleSheet.create({
   questionText: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.text,
     lineHeight: 28,
     textAlign: 'center',
   },
@@ -900,7 +898,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     ...SHADOWS.small,
   },
   navButtonNext: {
@@ -918,7 +916,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   navButtonTextDisabled: {
-    color: COLORS.gray300,
+    color: COLORS.textMuted,
   },
   resultGradient: {
     flex: 1,
@@ -1037,7 +1035,7 @@ const styles = StyleSheet.create({
   },
   reviewCorrect: {
     fontSize: 12,
-    color: '#4CAF50',
+    color: COLORS.success,
     marginTop: 2,
   },
   resultButtons: {

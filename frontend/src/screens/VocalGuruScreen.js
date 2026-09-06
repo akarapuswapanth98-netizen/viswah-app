@@ -9,11 +9,12 @@ import {
   Dimensions,
   StatusBar,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
+import { speakUtterance, stopSpeaking } from '../services/TtsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -129,7 +130,7 @@ const AnimatedCheckmark = ({ checked, color }) => {
   }, [checked]);
 
   return (
-    <Animated.View style={[styles.stepCheck, { backgroundColor: checked ? color : COLORS.gray200, transform: [{ scale }] }]}>
+    <Animated.View style={[styles.stepCheck, { backgroundColor: checked ? color : COLORS.surface, transform: [{ scale }] }]}>
       <MaterialCommunityIcons name="check" size={14} color={COLORS.white} />
     </Animated.View>
   );
@@ -144,7 +145,7 @@ const ScoreRing = ({ score }) => {
     Animated.timing(progress, { toValue: strokeDashoffset, duration: 1500, useNativeDriver: false }).start();
   }, []);
 
-  const ringColor = score >= 80 ? '#4CAF50' : score >= 50 ? '#FFC107' : '#F44336';
+  const ringColor = score >= 80 ? COLORS.success : score >= 50 ? COLORS.warning : COLORS.error;
 
   return (
     <View style={styles.scoreRingContainer}>
@@ -177,7 +178,7 @@ const AnimatedStar = ({ star, count, index }) => {
       <MaterialCommunityIcons
         name={star <= count ? 'star' : 'star-outline'}
         size={40}
-        color={star <= count ? '#FFD700' : COLORS.gray300}
+        color={star <= count ? '#FFD700' : COLORS.textMuted}
       />
     </Animated.View>
   );
@@ -229,7 +230,7 @@ const GuruCard = ({ guru, index, isSelected, onSelect }) => {
           },
         ]}
       >
-        <LinearGradient colors={guru.gradient} style={styles.guruCardGradient}>
+        <View style={[styles.guruCardGradient, { background: `linear-gradient(135deg, ${guru.gradient.join(', ')})` }]}>
           <View style={[styles.guruAvatar, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
             <Text style={styles.guruAvatarText}>{guru.initials}</Text>
           </View>
@@ -242,7 +243,7 @@ const GuruCard = ({ guru, index, isSelected, onSelect }) => {
               <Tag key={spec} label={spec} color={COLORS.white} variant="light" size="small" />
             ))}
           </View>
-        </LinearGradient>
+        </View>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -268,6 +269,12 @@ const VocalGuruScreen = ({ navigation }) => {
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
   }, []);
 
   const animateTopics = () => {
@@ -302,7 +309,7 @@ const VocalGuruScreen = ({ navigation }) => {
   const handleStartLesson = async (topicKey) => {
     if (!selectedGuru) return;
     try {
-      const res = await authFetch(api.vocalGuruGreet(selectedGuru.id));
+      const res = await authFetch(api.vocalGuruGreet(selectedGuru.id), { method: 'POST' });
       let greeting = `Welcome! Let's master ${topicKey} today.`;
       if (res.ok) {
         const data = await res.json();
@@ -332,19 +339,38 @@ const VocalGuruScreen = ({ navigation }) => {
     });
   };
 
-  const handleSpeak = async (text) => {
+const handleSpeak = async (text) => {
+    setSpeaking(true);
+    setAudioPlaying(true);
     try {
-      setSpeaking(true);
       const res = await authFetch(api.vocalGuruSpeak, {
         method: 'POST',
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, guru_id: selectedGuru?.id || 'classical' }),
       });
       if (res.ok) {
-        setAudioPlaying(true);
-        setTimeout(() => setAudioPlaying(false), 4000);
+        const data = await res.json();
+        if (data.audio_url) {
+          const audioUrl = data.audio_url.startsWith('http') ? data.audio_url : `http://127.0.0.1:8003${data.audio_url}`;
+          try {
+            const { sound } = await Audio.Sound.createAsync({ uri: audioUrl });
+            await sound.playAsync();
+            sound.setOnPlaybackStatusUpdate((status) => {
+              if (status.didJustFinish) {
+                setAudioPlaying(false);
+                sound.unloadAsync();
+              }
+            });
+            setSpeaking(false);
+            return;
+          } catch (audioErr) {
+            console.log('Backend audio failed, using browser TTS:', audioErr);
+          }
+        }
       }
+      speakUtterance(text, () => setAudioPlaying(false));
     } catch (e) {
       console.error(e);
+      speakUtterance(text, () => setAudioPlaying(false));
     } finally {
       setSpeaking(false);
     }
@@ -372,7 +398,7 @@ const VocalGuruScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient {...createGradient(COLORS.gradient.royal)} style={styles.header}>
+      <View style={[styles.header, { background: `linear-gradient(135deg, ${COLORS.gradient.royal.join(', ')})` }]}>
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.white} />
@@ -385,7 +411,7 @@ const VocalGuruScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="cog-outline" size={22} color={COLORS.white} />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* GURU CAROUSEL */}
@@ -506,7 +532,7 @@ const VocalGuruScreen = ({ navigation }) => {
                     <MaterialCommunityIcons
                       name={checked ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
                       size={22}
-                      color={checked ? currentLesson.guru.color : COLORS.gray300}
+                      color={checked ? currentLesson.guru.color : COLORS.textMuted}
                     />
                   </TouchableOpacity>
                 );
@@ -517,9 +543,12 @@ const VocalGuruScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[styles.nextStepBtn, { backgroundColor: currentLesson.guru.color }]}
               activeOpacity={0.85}
-              onPress={() => {
+onPress={() => {
                 const unchecked = currentLesson.steps.find((s) => !completedSteps[s.id]);
-                if (unchecked) handleToggleStep(unchecked.id);
+                if (unchecked) {
+                  handleToggleStep(unchecked.id);
+                  speakUtterance(unchecked.text + '. ' + unchecked.tip);
+                }
               }}
             >
               <Text style={styles.nextStepBtnText}>
@@ -545,8 +574,8 @@ const VocalGuruScreen = ({ navigation }) => {
             <Text style={styles.summaryTitle}>Great Job!</Text>
             <Text style={styles.summarySubtitle}>You completed the {currentLesson.topic} lesson</Text>
 
-            <ScoreRing score={85} />
-            <StarRating count={3} />
+            <ScoreRing score={Math.round((Object.values(completedSteps).filter(Boolean).length / (currentLesson?.steps?.length || 1)) * 100)} />
+            <StarRating count={Math.min(5, Math.max(1, Math.ceil(Object.values(completedSteps).filter(Boolean).length / (currentLesson?.steps?.length || 1) * 5)))} />
 
             <GradientButton
               title="Try Another Topic"
@@ -679,7 +708,7 @@ const styles = StyleSheet.create({
   },
   lessonAvatarText: { fontSize: 20, fontWeight: '700', color: COLORS.white },
   lessonGuruName: { fontSize: 17, fontWeight: '700', color: COLORS.black },
-  lessonTopicText: { fontSize: 13, color: COLORS.gray500, marginTop: 2 },
+  lessonTopicText: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
 
   listenBtn: {
     flexDirection: 'row',
@@ -707,7 +736,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
+    borderBottomColor: COLORS.surfaceBorder,
     gap: SPACING.md,
   },
   stepRowDone: { opacity: 0.7 },
@@ -721,8 +750,8 @@ const styles = StyleSheet.create({
   },
   stepContent: { flex: 1 },
   stepText: { fontSize: 14, fontWeight: '500', color: COLORS.black, lineHeight: 20 },
-  stepTextDone: { textDecorationLine: 'line-through', color: COLORS.gray500 },
-  stepTip: { fontSize: 12, color: COLORS.gray500, marginTop: 3, fontStyle: 'italic' },
+  stepTextDone: { textDecorationLine: 'line-through', color: COLORS.textSecondary },
+  stepTip: { fontSize: 12, color: COLORS.textSecondary, marginTop: 3, fontStyle: 'italic' },
 
   nextStepBtn: {
     flexDirection: 'row',
@@ -751,7 +780,7 @@ const styles = StyleSheet.create({
   /* Summary */
   summaryPanel: { paddingHorizontal: SPACING.lg, marginTop: SPACING.xxxl, alignItems: 'center' },
   summaryTitle: { fontSize: 26, fontWeight: '700', color: COLORS.black, marginBottom: 4 },
-  summarySubtitle: { fontSize: 14, color: COLORS.gray500, marginBottom: SPACING.xl },
+  summarySubtitle: { fontSize: 14, color: COLORS.textSecondary, marginBottom: SPACING.xl },
 
   scoreRingContainer: { marginBottom: SPACING.xl },
   scoreRingOuter: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center' },
@@ -771,7 +800,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 8,
-    borderColor: '#4CAF50',
+    borderColor: COLORS.success,
     borderTopColor: 'transparent',
     borderRightColor: 'transparent',
     alignSelf: 'center',
@@ -779,7 +808,7 @@ const styles = StyleSheet.create({
   },
   scoreRingInner: { alignItems: 'center', zIndex: 1 },
   scoreNumber: { fontSize: 32, fontWeight: '700' },
-  scoreLabel: { fontSize: 11, color: COLORS.gray500, fontWeight: '500' },
+  scoreLabel: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '500' },
 
   starsRow: { flexDirection: 'row', marginBottom: SPACING.xl, gap: SPACING.sm },
   star: { marginHorizontal: 4 },

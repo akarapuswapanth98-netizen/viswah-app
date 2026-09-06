@@ -13,6 +13,7 @@ export const COLORS = {
   neonGreen: '#10B981',
   white: '#FFFFFF',
   black: '#090A0F',
+  background: '#090A0F',
   bg: '#090A0F',
   bgElevated: '#0E111A',
   bgCard: '#12151F',

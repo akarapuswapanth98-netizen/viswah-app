@@ -4,11 +4,10 @@ import {
   Dimensions, StatusBar, Platform, Vibration,
 } from 'react-native';
 import { Svg, Defs, LinearGradient, Stop, Rect, Circle, Ellipse, Filter, FeGaussianBlur } from 'react-native-svg';
-import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import AudioVisualizer3D from '../components/AudioVisualizer3D';
 import { getAuthToken } from '../config/api';
+import { audioService } from '../services/AudioService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -52,7 +51,7 @@ const VEL_CURVE = [
   { threshold: 0.4, velocity: 1.0, label: 'ff' },
 ];
 
-const PianoScreen = ({ onNavigate }) => {
+const PianoScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [preset, setPreset] = useState('Grand');
   const [selectedOctave, setSelectedOctave] = useState(0);
@@ -85,6 +84,7 @@ const PianoScreen = ({ onNavigate }) => {
   }, [selectedOctave]);
 
   const getAudioContext = useCallback(() => {
+    if (typeof window === 'undefined') return null;
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
       audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioCtxRef.current.createAnalyser();
@@ -112,6 +112,7 @@ const PianoScreen = ({ onNavigate }) => {
 
   const playNote = useCallback((note, velocity = 0.8) => {
     const ctx = getAudioContext();
+    if (!ctx) return;
     const settings = PRESETS[preset];
     const now = ctx.currentTime;
     const gain = ctx.createGain();
@@ -227,6 +228,8 @@ const PianoScreen = ({ onNavigate }) => {
   };
 
   const handleKeyPress = useCallback((note, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (e && e.preventDefault) e.preventDefault();
     const touch = e?.nativeEvent?.locationY || 20;
     const keyHeight = 200;
     const velocity = Math.min(1, Math.max(0, (touch / keyHeight) * 1.2 + 0.2));
@@ -239,7 +242,7 @@ const PianoScreen = ({ onNavigate }) => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => onNavigate('home')} style={styles.backBtn}>
+          <TouchableOpacity onPress={(e) => { if(e.stopPropagation) e.stopPropagation(); navigation.navigate('Home'); }} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#C4B5FD" />
           </TouchableOpacity>
           <View style={styles.headerTitleWrap}>
@@ -326,7 +329,7 @@ const PianoScreen = ({ onNavigate }) => {
               const w = (SCREEN_WIDTH - 32) / whiteKeys.length;
               const isActive = activeKeys[n.note];
               return (
-                <G key={n.note} onPress={(e) => handleKeyPress(n, e)}>
+                <G key={n.note} onPress={(e) => { if(e.stopPropagation) e.stopPropagation(); handleKeyPress(n, e); }}>
                   <Rect x={i * w} y={0} width={w - 2} height={200} rx={4} fill={isActive ? 'url(#whiteKeyActive)' : 'url(#whiteKey)'} stroke="#D1CBC2" strokeWidth={0.5} />
                   <Rect x={i * w} y={0} width={w - 2} height={200} rx={4} fill="url(#specularWhite)" />
                   {isActive && (
@@ -354,7 +357,7 @@ const PianoScreen = ({ onNavigate }) => {
               const left = getBlackKeyLeft(i);
               const isActive = activeKeys[n.note];
               return (
-                <G key={n.note} onPress={(e) => handleKeyPress(n, e)}>
+                <G key={n.note} onPress={(e) => { if(e.stopPropagation) e.stopPropagation(); handleKeyPress(n, e); }}>
                   <Rect x={left} y={0} width={((SCREEN_WIDTH - 32) / whiteKeys.length) * 0.62} height={125} rx={3} fill={isActive ? 'url(#blackKeyActive)' : 'url(#blackKey)'} stroke="#111" strokeWidth={0.5} />
                   <Rect x={left} y={0} width={((SCREEN_WIDTH - 32) / whiteKeys.length) * 0.62} height={125} rx={3} fill="url(#specularBlack)" />
                   {isActive && (

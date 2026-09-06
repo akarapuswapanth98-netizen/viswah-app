@@ -9,9 +9,8 @@ import {
   RefreshControl,
   Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, GLASS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, GLASS } from '../theme';
 import { SectionHeader, Tag, ProgressBar } from '../components/UIComponents';
 import { api, authFetch, getAuthToken } from '../config/api';
 
@@ -63,8 +62,8 @@ const getDifficultyColor = (diff) => {
 };
 
 const HomeScreen = ({ navigation }) => {
-  const [courses, setCourses] = useState([]);
-  const [enrolledCourses, setEnrolledCourses] = useState(ENROLLED_COURSES);
+  const [courses, setCourses] = useState(BROWSE_COURSES);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [username, setUsername] = useState('Student');
@@ -288,9 +287,8 @@ const HomeScreen = ({ navigation }) => {
               activeOpacity={0.9}
               onPress={() => navigation.navigate('Course', { courseId: course.id })}
             >
-              <LinearGradient
-                {...createGradient(COLORS.gradient.royal)}
-                style={styles.continueCardGradient}
+              <View
+                style={[styles.continueCardGradient, { background: `linear-gradient(135deg, ${COLORS.gradient.royal.join(', ')})` }]}
               >
                 <View style={styles.continueCardOverlay} />
                 <View style={styles.continueCardContent}>
@@ -313,7 +311,7 @@ const HomeScreen = ({ navigation }) => {
                     <Text style={styles.continueButtonText}>Continue</Text>
                   </TouchableOpacity>
                 </View>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -327,9 +325,8 @@ const HomeScreen = ({ navigation }) => {
           activeOpacity={0.9}
           onPress={() => navigation.navigate('VocalGuru')}
         >
-          <LinearGradient
-            {...createGradient(['#6C63FF', '#9C27B0'])}
-            style={styles.vocalGuruCard}
+          <View
+            style={[styles.vocalGuruCard, { background: 'linear-gradient(135deg, #6C63FF, #9C27B0)' }]}
           >
             <View style={styles.vocalGuruContent}>
               <View style={styles.vocalGuruTextSection}>
@@ -364,7 +361,7 @@ const HomeScreen = ({ navigation }) => {
                 ))}
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
       </View>
     ));
@@ -406,14 +403,13 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('Piano')}
             style={styles.instrumentCardWrapper}
           >
-            <LinearGradient
-              {...createGradient(['#6C63FF', '#9C27B0'])}
-              style={styles.instrumentCard}
+            <View
+              style={[styles.instrumentCard, { background: 'linear-gradient(135deg, #6C63FF, #9C27B0)' }]}
             >
               {renderPianoIllustration()}
               <Text style={styles.instrumentTitle}>Piano</Text>
               <Text style={styles.instrumentSub}>Play now</Text>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.9}
@@ -422,14 +418,13 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('Drums')}
             style={styles.instrumentCardWrapper}
           >
-            <LinearGradient
-              {...createGradient(['#FF6B6B', '#FF8E53'])}
-              style={styles.instrumentCard}
+            <View
+              style={[styles.instrumentCard, { background: 'linear-gradient(135deg, #FF6B6B, #FF8E53)' }]}
             >
               {renderDrumIllustration()}
               <Text style={styles.instrumentTitle}>Drums</Text>
               <Text style={styles.instrumentSub}>Play now</Text>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -442,9 +437,8 @@ const HomeScreen = ({ navigation }) => {
           activeOpacity={0.9}
           onPress={() => navigation.navigate('SpeechAnalysis')}
         >
-          <LinearGradient
-            {...createGradient(['#4ECDC4', '#44A08D'])}
-            style={styles.featureCard}
+          <View
+            style={[styles.featureCard, { background: 'linear-gradient(135deg, #4ECDC4, #44A08D)' }]}
           >
             <View style={styles.featureCardContent}>
               <View style={styles.featureCardLeft}>
@@ -481,7 +475,7 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.practiceButtonText}>Practice Now</Text>
               <MaterialCommunityIcons name="arrow-right" size={16} color={COLORS.white} />
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
       </View>
     ));
@@ -493,9 +487,8 @@ const HomeScreen = ({ navigation }) => {
           activeOpacity={0.9}
           onPress={() => navigation.navigate('LyricsCreator')}
         >
-          <LinearGradient
-            {...createGradient(['#9C27B0', '#E91E63'])}
-            style={styles.featureCard}
+          <View
+            style={[styles.featureCard, { background: 'linear-gradient(135deg, #9C27B0, #E91E63)' }]}
           >
             <View style={styles.featureCardContent}>
               <View style={styles.featureCardLeft}>
@@ -520,7 +513,7 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.practiceButtonText}>Write Lyrics</Text>
               <MaterialCommunityIcons name="arrow-right" size={16} color={COLORS.white} />
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
       </View>
     ));
@@ -534,7 +527,7 @@ const HomeScreen = ({ navigation }) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.horizontalScroll}
         >
-          {BROWSE_COURSES.map((course) => (
+          {(courses.length > 0 ? courses : BROWSE_COURSES).map((course) => (
             <TouchableOpacity
               key={course.id}
               style={styles.browseCard}
@@ -572,9 +565,9 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={styles.browseCardTitle} numberOfLines={1}>
                   {course.title}
                 </Text>
-                <ProgressBar progress={course.progress} height={4} color={COLORS.neon} />
+                <ProgressBar progress={course.progress || 0} height={4} color={COLORS.neon} />
                 <View style={styles.browseCardFooter}>
-                  <Text style={styles.browseLessons}>12 Lessons</Text>
+                  <Text style={styles.browseLessons}>{course.lessons_count || '—'} Lessons</Text>
                   <MaterialCommunityIcons name="play-circle-outline" size={20} color={COLORS.neon} />
                 </View>
               </View>

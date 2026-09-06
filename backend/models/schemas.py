@@ -78,7 +78,8 @@ class CourseResponse(BaseModel):
     stage: int
     instrument: InstrumentType
     difficulty: DifficultyLevel
-    image_url: str | None = None  # Fix #5: Simple nullable string
+    image_url: str | None = None
+    lessons_count: int | None = None
 
     class Config:
         from_attributes = True

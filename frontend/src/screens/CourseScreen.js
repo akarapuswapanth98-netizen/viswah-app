@@ -9,9 +9,8 @@ import {
   Dimensions,
   Easing,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { GradientButton, Tag, ProgressBar } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 
@@ -164,9 +163,12 @@ const CourseScreen = ({ route, navigation }) => {
       const res = await authFetch(api.enroll(courseId), { method: 'POST' });
       if (res.ok) {
         setIsEnrolled(true);
+      } else if (res.status === 401) {
+        navigation.navigate('Login');
+        return;
       }
     } catch (e) {
-      console.error(e);
+      console.error('Enroll error:', e);
     } finally {
       setEnrolling(false);
     }
@@ -175,9 +177,9 @@ const CourseScreen = ({ route, navigation }) => {
   const handleMarkComplete = async (lessonId) => {
     setCompletingLesson(lessonId);
     try {
-      const res = await authFetch(api.progressById(lessonId), {
+      const res = await authFetch(api.progress, {
         method: 'POST',
-        body: JSON.stringify({ completed: true, score: 100 }),
+        body: JSON.stringify({ lesson_id: lessonId, completed: true, score: 100 }),
       });
       if (res.ok) {
         checkAnimations.current[lessonId] = new Animated.Value(0);
@@ -260,7 +262,7 @@ const CourseScreen = ({ route, navigation }) => {
             {Math.round(progressPercent * 100)}%
           </Animated.Text>
           <View style={styles.ringLabel}>
-            <Text style={[styles.ringLabelText, { color: COLORS.gray500 }]}>
+            <Text style={[styles.ringLabelText, { color: COLORS.textSecondary }]}>
               {completedCount}/{totalCount}
             </Text>
           </View>
@@ -321,7 +323,7 @@ const CourseScreen = ({ route, navigation }) => {
                 styles.lessonNumberCircle,
                 isCompleted && { backgroundColor: COLORS.success },
                 isCurrent && { backgroundColor: stageColor },
-                isLocked && { backgroundColor: COLORS.gray300 },
+                isLocked && { backgroundColor: 'rgba(100,116,139,0.3)' },
               ]}
             >
               {isCompleted ? (
@@ -337,7 +339,7 @@ const CourseScreen = ({ route, navigation }) => {
                   <MaterialCommunityIcons name="check" size={20} color={COLORS.white} />
                 </Animated.View>
               ) : isLocked ? (
-                <MaterialCommunityIcons name="lock" size={16} color={COLORS.gray500} />
+                <MaterialCommunityIcons name="lock" size={16} color={COLORS.textSecondary} />
               ) : (
                 <View style={[styles.lessonNumberText, isCurrent && { color: COLORS.white }]}>
                   <Text style={[styles.lessonNumberText, isCurrent && { color: COLORS.white }]}>
@@ -357,9 +359,9 @@ const CourseScreen = ({ route, navigation }) => {
               <Text
                 style={[
                   styles.lessonTitleText,
-                  isCompleted && { color: COLORS.gray500 },
-                  isCurrent && { color: COLORS.black },
-                  isLocked && { color: COLORS.gray400 },
+                  isCompleted && { color: COLORS.textSecondary },
+                  isCurrent && { color: COLORS.text },
+                  isLocked && { color: COLORS.textMuted },
                 ]}
               >
                 {lesson.title}
@@ -375,12 +377,12 @@ const CourseScreen = ({ route, navigation }) => {
                 <MaterialCommunityIcons
                   name={typeIcon}
                   size={14}
-                  color={isLocked ? COLORS.gray400 : COLORS.gray500}
+                  color={isLocked ? COLORS.textMuted : COLORS.textSecondary}
                 />
                 <Text
                   style={[
                     styles.lessonTypeText,
-                    { color: isLocked ? COLORS.gray400 : COLORS.gray500 },
+                    { color: isLocked ? COLORS.textMuted : COLORS.textSecondary },
                   ]}
                 >
                   {lesson.content_type || 'Lesson'}
@@ -393,7 +395,7 @@ const CourseScreen = ({ route, navigation }) => {
             ) : isCurrent ? (
               <MaterialCommunityIcons name="chevron-right" size={24} color={stageColor} />
             ) : (
-              <MaterialCommunityIcons name="lock-outline" size={20} color={COLORS.gray400} />
+              <MaterialCommunityIcons name="lock-outline" size={20} color={COLORS.textMuted} />
             )}
           </View>
         </TouchableOpacity>
@@ -460,11 +462,8 @@ const CourseScreen = ({ route, navigation }) => {
           },
         ]}
       >
-        <LinearGradient
-          colors={[stageColor, `${stageColor}CC`]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
+        <View
+          style={[styles.headerGradient, { background: `linear-gradient(135deg, ${stageColor}, ${stageColor}CC)` }]}
         >
           <View style={styles.headerOverlay} />
 
@@ -523,7 +522,7 @@ const CourseScreen = ({ route, navigation }) => {
               </View>
             </View>
           </View>
-        </LinearGradient>
+        </View>
       </Animated.View>
 
       <ScrollView
@@ -688,7 +687,7 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   progressCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.xl,
     ...SHADOWS.medium,
@@ -702,7 +701,7 @@ const styles = StyleSheet.create({
   progressCardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
   },
   progressCardPercent: {
     fontSize: 20,
@@ -722,7 +721,7 @@ const styles = StyleSheet.create({
   },
   ringTrack: {
     position: 'absolute',
-    borderColor: COLORS.gray200,
+    borderColor: COLORS.surfaceBorder,
   },
   ringFill: {
     position: 'absolute',
@@ -747,7 +746,7 @@ const styles = StyleSheet.create({
   },
   progressLessonsText: {
     fontSize: 14,
-    color: COLORS.gray600,
+    color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
     fontWeight: '500',
   },
@@ -771,17 +770,17 @@ const styles = StyleSheet.create({
   lessonSectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
   },
   lessonSectionCount: {
     fontSize: 14,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
   lessonCard: {
     marginBottom: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     overflow: 'hidden',
     ...SHADOWS.small,
   },
@@ -793,7 +792,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   lessonCardLocked: {
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.surface,
     opacity: 0.7,
   },
   lessonInner: {
@@ -805,7 +804,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.gray200,
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: SPACING.lg,
@@ -813,7 +812,7 @@ const styles = StyleSheet.create({
   lessonNumberText: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.gray600,
+    color: COLORS.textSecondary,
   },
   lessonInfo: {
     flex: 1,
@@ -826,7 +825,7 @@ const styles = StyleSheet.create({
   lessonTitleText: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.text,
     flex: 1,
   },
   pulsingDot: {
@@ -850,7 +849,7 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   enrollCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.xl,
     ...SHADOWS.medium,
@@ -866,12 +865,12 @@ const styles = StyleSheet.create({
   enrollTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
   },
   enrollDescText: {
     fontSize: 15,
     lineHeight: 22,
-    color: COLORS.gray600,
+    color: COLORS.textSecondary,
     marginBottom: SPACING.xl,
   },
   learnSection: {
@@ -880,7 +879,7 @@ const styles = StyleSheet.create({
   learnTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
     marginBottom: SPACING.md,
   },
   learnItem: {
@@ -890,7 +889,7 @@ const styles = StyleSheet.create({
   },
   learnPointText: {
     fontSize: 14,
-    color: COLORS.gray600,
+    color: COLORS.textSecondary,
     marginLeft: SPACING.sm,
     flex: 1,
     lineHeight: 20,

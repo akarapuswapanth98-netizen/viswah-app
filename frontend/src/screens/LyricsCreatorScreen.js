@@ -10,9 +10,8 @@ import {
   Dimensions,
   Share,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 
@@ -102,7 +101,7 @@ const LyricsCreatorScreen = ({ navigation }) => {
     try {
       const res = await authFetch(api.lyricsGenerate, {
         method: 'POST',
-        body: JSON.stringify({ topic, style: selectedStyle }),
+        body: JSON.stringify({ topic, genre: selectedStyle, mood: 'happy', language: 'english' }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -170,7 +169,7 @@ const LyricsCreatorScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient {...createGradient(['#9C27B0', '#E91E63'])} style={styles.header}>
+      <View style={[styles.header, { background: 'linear-gradient(135deg, #9C27B0, #E91E63)' }]}>
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
@@ -180,7 +179,7 @@ const LyricsCreatorScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="content-save" size={22} color={COLORS.white} />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {!lyrics ? (
@@ -192,7 +191,7 @@ const LyricsCreatorScreen = ({ navigation }) => {
                   ref={textInputRef}
                   style={styles.topicInput}
                   placeholder="What should the lyrics be about?"
-                  placeholderTextColor={COLORS.gray400}
+                  placeholderTextColor={COLORS.textMuted}
                   value={topic}
                   onChangeText={setTopic}
                   multiline
@@ -233,9 +232,8 @@ const LyricsCreatorScreen = ({ navigation }) => {
               disabled={!topic.trim() || generating}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                {...createGradient(['#9C63FF', '#E91E63'])}
-                style={styles.generateButtonGradient}
+              <View
+                style={[styles.generateButtonGradient, { background: 'linear-gradient(135deg, #9C63FF, #E91E63)' }]}
               >
                 {generating ? (
                   <Animated.View style={{ transform: [{ rotate: spinInterpolate }] }}>
@@ -247,7 +245,7 @@ const LyricsCreatorScreen = ({ navigation }) => {
                 <Text style={styles.generateButtonText}>
                   {generating ? 'Generating...' : 'Generate Lyrics'}
                 </Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </Animated.View>
         ) : (
@@ -275,7 +273,7 @@ const LyricsCreatorScreen = ({ navigation }) => {
                   multiline
                   textAlignVertical="top"
                   placeholder="Edit your lyrics..."
-                  placeholderTextColor={COLORS.gray400}
+                  placeholderTextColor={COLORS.textMuted}
                   selectionColor="#9C63FF"
                   scrollEnabled={false}
                 />
@@ -283,7 +281,7 @@ const LyricsCreatorScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.wordCountBar}>
-              <MaterialCommunityIcons name="format-text" size={14} color={COLORS.gray500} />
+              <MaterialCommunityIcons name="format-text" size={14} color={COLORS.textSecondary} />
               <Text style={styles.wordCountText}>{wordCount} words · {lines.length} lines</Text>
             </View>
 
@@ -394,7 +392,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.gray700,
+    color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
     marginLeft: SPACING.xs,
   },
@@ -419,7 +417,7 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.gray700,
+    color: COLORS.textSecondary,
   },
   chipTextSelected: {
     color: COLORS.white,
@@ -474,14 +472,14 @@ const styles = StyleSheet.create({
   },
   lineNumberColumn: {
     width: 40,
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.surface,
     paddingTop: SPACING.lg,
     alignItems: 'flex-end',
     paddingRight: SPACING.sm,
   },
   lineNumber: {
     fontSize: 12,
-    color: COLORS.gray400,
+    color: COLORS.textMuted,
     lineHeight: 24,
     fontFamily: 'monospace',
   },
@@ -507,7 +505,7 @@ const styles = StyleSheet.create({
   },
   wordCountText: {
     fontSize: 12,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     marginLeft: SPACING.xs,
   },
   actionBar: {
@@ -527,7 +525,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.xs,
@@ -543,7 +541,7 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: COLORS.gray600,
+    color: COLORS.textSecondary,
   },
   bottomPadding: {
     height: 100,

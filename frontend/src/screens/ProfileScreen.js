@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Switch } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Switch, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { Tag, GradientButton } from '../components/UIComponents';
 import { api, authFetch, clearAuthToken } from '../config/api';
 
@@ -167,12 +166,12 @@ const ProfileScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={['#6C63FF', '#9C27B0']} style={styles.header}>
+      <View style={[styles.header, { background: `linear-gradient(135deg, ${COLORS.gradient.royal.join(', ')})` }]}>
         <View style={styles.headerTopBar}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.white} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => Alert.alert('Account Settings', `Username: ${user?.username || 'N/A'}\nEmail: ${user?.email || 'N/A'}`)}>
             <MaterialCommunityIcons name="cog" size={22} color={COLORS.white} />
           </TouchableOpacity>
         </View>
@@ -181,16 +180,15 @@ const ProfileScreen = ({ navigation }) => {
           <Animated.View
             style={[styles.avatarOuter, { transform: [{ scale: avatarScale }] }]}
           >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.1)']}
-              style={styles.avatarCircle}
+            <View
+              style={[styles.avatarCircle, { background: 'linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1))' }]}
             >
               {getInitials() ? (
                 <Text style={styles.avatarInitials}>{getInitials()}</Text>
               ) : (
                 <MaterialCommunityIcons name="account" size={52} color={COLORS.white} />
               )}
-            </LinearGradient>
+            </View>
             <View style={styles.onlineDot} />
           </Animated.View>
 
@@ -204,7 +202,7 @@ const ProfileScreen = ({ navigation }) => {
             size="medium"
           />
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Stats Grid */}
@@ -240,7 +238,7 @@ const ProfileScreen = ({ navigation }) => {
                     {
                       opacity: dotAnims[i],
                       transform: [{ scale: dotAnims[i] }],
-                      backgroundColor: weeklyActivity[i] ? COLORS.success : COLORS.gray300,
+                      backgroundColor: weeklyActivity[i] ? COLORS.success : 'rgba(100,116,139,0.3)',
                     },
                   ]}
                 />
@@ -273,7 +271,7 @@ const ProfileScreen = ({ navigation }) => {
                   <MaterialCommunityIcons
                     name={badge.earned ? badge.icon : 'lock'}
                     size={28}
-                    color={badge.earned ? COLORS.white : COLORS.gray400}
+                    color={badge.earned ? COLORS.white : COLORS.textMuted}
                   />
                 </View>
                 <Animated.Text
@@ -293,12 +291,12 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.sectionCard}>
           <Animated.Text style={styles.sectionTitle}>Settings</Animated.Text>
 
-          <TouchableOpacity style={styles.settingRow}>
+          <TouchableOpacity style={styles.settingRow} onPress={() => Alert.alert('Account Settings', `Username: ${user?.username || 'N/A'}\nEmail: ${user?.email || 'N/A'}`)}>
             <View style={[styles.settingIconWrap, { backgroundColor: `${COLORS.primary}18` }]}>
               <MaterialCommunityIcons name="account-cog" size={20} color={COLORS.primary} />
             </View>
             <Animated.Text style={styles.settingLabel}>Account Settings</Animated.Text>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.gray400} />
+            <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted} />
           </TouchableOpacity>
 
           <View style={styles.settingRow}>
@@ -309,17 +307,17 @@ const ProfileScreen = ({ navigation }) => {
             <Switch
               value={notifications}
               onValueChange={setNotifications}
-              trackColor={{ false: COLORS.gray300, true: `${COLORS.primary}60` }}
-              thumbColor={notifications ? COLORS.primary : COLORS.gray400}
+              trackColor={{ false: 'rgba(100,116,139,0.3)', true: `${COLORS.primary}60` }}
+              thumbColor={notifications ? COLORS.primary : COLORS.textMuted}
             />
           </View>
 
-          <TouchableOpacity style={styles.settingRow}>
+          <TouchableOpacity style={styles.settingRow} onPress={() => Alert.alert('About Viswah', 'Version 1.0.0\nAI-powered music learning platform\n\nFeatures:\n- AI Lesson Generator\n- Virtual Piano & Drums\n- Vocal Guru\n- Speech Analysis\n- Lyrics Creator')}>
             <View style={[styles.settingIconWrap, { backgroundColor: `${COLORS.success}18` }]}>
               <MaterialCommunityIcons name="information-outline" size={20} color={COLORS.success} />
             </View>
             <Animated.Text style={styles.settingLabel}>About</Animated.Text>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.gray400} />
+            <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -383,7 +381,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: COLORS.success,
     borderWidth: 3,
-    borderColor: '#6C63FF',
+    borderColor: COLORS.primary,
   },
   userName: {
     fontSize: 22,
@@ -407,7 +405,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '48%',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.lg,
     marginBottom: SPACING.md,
@@ -425,16 +423,16 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 26,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
   },
   statLabel: {
     fontSize: 12,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
 
   sectionCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.xl,
     marginBottom: SPACING.xl,
@@ -443,12 +441,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.text,
     marginBottom: 2,
   },
   sectionSub: {
     fontSize: 13,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     marginBottom: SPACING.lg,
   },
 
@@ -465,7 +463,7 @@ const styles = StyleSheet.create({
   },
   activityDay: {
     fontSize: 12,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     fontWeight: '600',
   },
 
@@ -486,18 +484,18 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   badgeIconCircleLocked: {
-    backgroundColor: COLORS.gray200,
+    backgroundColor: COLORS.surface,
   },
   badgeName: {
     fontSize: 11,
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.text,
     textAlign: 'center',
   },
-  badgeNameLocked: { color: COLORS.gray400 },
+  badgeNameLocked: { color: COLORS.textMuted },
   badgeDate: {
     fontSize: 10,
-    color: COLORS.gray400,
+    color: COLORS.textMuted,
     marginTop: 2,
   },
 
@@ -506,7 +504,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
+    borderBottomColor: COLORS.surfaceBorder,
   },
   settingIconWrap: {
     width: 36,
@@ -519,14 +517,14 @@ const styles = StyleSheet.create({
   settingLabel: {
     flex: 1,
     fontSize: 15,
-    color: COLORS.black,
+    color: COLORS.text,
   },
 
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     padding: SPACING.lg,
     borderRadius: BORDER_RADIUS.xl,
     borderWidth: 1,

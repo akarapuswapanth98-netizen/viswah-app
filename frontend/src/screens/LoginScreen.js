@@ -11,9 +11,8 @@ import {
   Dimensions,
   StatusBar,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, createGradient } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { GradientButton } from '../components/UIComponents';
 import { api, authFetch, setAuthToken } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -209,7 +208,7 @@ const LoginScreen = ({ navigation }) => {
     try {
       const endpoint = isLogin ? api.login : api.register;
       const body = isLogin
-        ? { username: username.trim(), password }
+        ? { email: username.trim(), password }
         : { username: username.trim(), email: email.trim(), password };
 
       const res = await authFetch(endpoint, {
@@ -272,11 +271,11 @@ const LoginScreen = ({ navigation }) => {
         }}
       >
         <View style={[styles.inputContainer, errors[errorKey] && styles.inputError]}>
-          <MaterialCommunityIcons name={icon} size={20} color={COLORS.gray400} />
+          <MaterialCommunityIcons name={icon} size={20} color={COLORS.textMuted} />
           <TextInput
             style={styles.input}
             placeholder={placeholder}
-            placeholderTextColor={COLORS.gray400}
+            placeholderTextColor={COLORS.textMuted}
             value={value}
             onChangeText={onChangeText}
             secureTextEntry={secure || false}
@@ -288,7 +287,7 @@ const LoginScreen = ({ navigation }) => {
               <MaterialCommunityIcons
                 name={showSecure ? 'eye-off' : 'eye'}
                 size={20}
-                color={COLORS.gray400}
+                color={COLORS.textMuted}
               />
             </TouchableOpacity>
           )}
@@ -309,11 +308,8 @@ const LoginScreen = ({ navigation }) => {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <LinearGradient
-          colors={['#6C63FF', '#4ECDC4']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
+        <View
+          style={[styles.gradient, { background: 'linear-gradient(135deg, #6C63FF, #4ECDC4)' }]}
         >
           <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
@@ -433,7 +429,7 @@ const LoginScreen = ({ navigation }) => {
           >
             <Text style={styles.skipText}>Skip for now</Text>
           </TouchableOpacity>
-        </LinearGradient>
+        </View>
       </KeyboardAvoidingView>
     </Animated.View>
   );
@@ -496,7 +492,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   formCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.glass.bg,
     borderRadius: 20,
     padding: SPACING.xxl,
     ...SHADOWS.large,
@@ -504,15 +500,15 @@ const styles = StyleSheet.create({
   generalError: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF0F0',
+    backgroundColor: 'rgba(239,68,68,0.1)',
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.lg,
     borderWidth: 1,
-    borderColor: '#FFD4D4',
+    borderColor: 'rgba(239,68,68,0.2)',
   },
   generalErrorText: {
-    color: '#FF3B30',
+    color: '#EF4444',
     fontSize: 14,
     marginLeft: SPACING.sm,
     flex: 1,
@@ -520,7 +516,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.lg,
     paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.md,
@@ -529,14 +525,14 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: '#FF3B30',
-    backgroundColor: '#FFF8F8',
+    backgroundColor: 'rgba(239,68,68,0.05)',
   },
   input: {
     flex: 1,
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.md,
     fontSize: 16,
-    color: COLORS.black,
+    color: COLORS.text,
   },
   inlineError: {
     flexDirection: 'row',
@@ -545,7 +541,7 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.xs,
   },
   inlineErrorText: {
-    color: '#FF3B30',
+    color: '#EF4444',
     fontSize: 13,
     marginLeft: 4,
   },
@@ -561,11 +557,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.gray200,
+    backgroundColor: COLORS.surface,
   },
   dividerText: {
     marginHorizontal: SPACING.lg,
-    color: COLORS.gray500,
+    color: COLORS.textSecondary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -575,11 +571,11 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   toggleText: {
-    color: COLORS.gray600,
+    color: COLORS.textSecondary,
     fontSize: 14,
   },
   toggleLink: {
-    color: '#6C63FF',
+    color: COLORS.primary,
     fontSize: 14,
     fontWeight: '700',
   },

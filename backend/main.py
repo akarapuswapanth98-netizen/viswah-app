@@ -1,10 +1,12 @@
 # Viswah Backend - FastAPI Main
 
+import json
 import logging
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 logger = logging.getLogger(__name__)
@@ -79,6 +81,17 @@ def root():
 @app.get("/api/health", response_model=SuccessResponse, tags=["System"])
 def health():
     return SuccessResponse(message="healthy")
+
+
+MUSIC_ONTOLOGY_PATH = Path(__file__).parent / "data" / "music_ontology.json"
+
+
+@app.get("/api/v1/musicology/genres")
+def get_musicology_genres():
+    if not MUSIC_ONTOLOGY_PATH.exists():
+        raise HTTPException(status_code=404, detail="Music ontology not found")
+    with open(MUSIC_ONTOLOGY_PATH) as f:
+        return json.load(f)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -21,7 +22,7 @@ from routes.auth import get_current_user
 router = APIRouter(prefix="/api", tags=["Courses"])
 
 
-@router.get("/courses", response_model=list[CourseResponse])
+@router.get("/courses")
 def get_courses(
     stage: int | None = Query(default=None, ge=1, le=4),
     instrument: InstrumentType | None = None,
@@ -32,15 +33,39 @@ def get_courses(
         query = query.filter(Course.stage == stage)
     if instrument:
         query = query.filter(Course.instrument == instrument.value)
-    return query.all()
+    courses = query.all()
+    result = []
+    for course in courses:
+        lesson_count = db.query(Lesson).filter(Lesson.course_id == course.id).count()
+        result.append({
+            "id": course.id,
+            "title": course.title,
+            "description": course.description,
+            "stage": course.stage,
+            "instrument": course.instrument,
+            "difficulty": course.difficulty,
+            "image_url": course.image_url,
+            "lessons_count": lesson_count,
+        })
+    return result
 
 
-@router.get("/courses/{course_id}", response_model=CourseResponse)
+@router.get("/courses/{course_id}")
 def get_course(course_id: int, db: Session = Depends(get_db)):
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    return course
+    lesson_count = db.query(Lesson).filter(Lesson.course_id == course_id).count()
+    return {
+        "id": course.id,
+        "title": course.title,
+        "description": course.description,
+        "stage": course.stage,
+        "instrument": course.instrument,
+        "difficulty": course.difficulty,
+        "image_url": course.image_url,
+        "lessons_count": lesson_count,
+    }
 
 
 @router.get("/courses/{course_id}/lessons", response_model=list[LessonResponse])
