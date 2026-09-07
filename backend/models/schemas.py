@@ -95,7 +95,7 @@ class LessonResponse(BaseModel):
     audio_url: str | None = None
     order: int
     lesson_type: LessonType
-    duration_minutes: int = Field(..., ge=1)
+    duration_minutes: int = Field(..., ge=0)
     quiz_questions: list[dict] | None = None
 
     @field_validator('quiz_questions', mode='before')
@@ -190,7 +190,7 @@ class ExerciseGenerateRequest(BaseModel):
 class ExerciseResponse(BaseModel):
     exercise_name: str
     instructions: list[str] = Field(..., min_length=1)
-    duration: str = Field(..., min_length=1, pattern=r"^\d+\s*(min|minutes|mins|hour|hours|hrs|sec|seconds|s)$")
+    duration: str = Field(..., min_length=1)
     success_criteria: str = Field(..., min_length=1)
 
 

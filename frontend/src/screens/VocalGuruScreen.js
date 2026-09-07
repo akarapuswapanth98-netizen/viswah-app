@@ -13,7 +13,7 @@ import { Audio } from 'expo-av';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { GradientButton, Tag } from '../components/UIComponents';
-import { api, authFetch } from '../config/api';
+import { api, authFetch, API_URL } from '../config/api';
 import { speakUtterance, stopSpeaking } from '../services/TtsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -377,7 +377,7 @@ const handleSpeak = async (text) => {
       if (res.ok) {
         const data = await res.json();
         if (data.audio_url) {
-          const audioUrl = data.audio_url.startsWith('http') ? data.audio_url : `http://127.0.0.1:8003${data.audio_url}`;
+          const audioUrl = data.audio_url.startsWith('http') ? data.audio_url : `${API_URL}${data.audio_url}`;
           try {
             const { sound } = await Audio.Sound.createAsync({ uri: audioUrl });
             await sound.playAsync();

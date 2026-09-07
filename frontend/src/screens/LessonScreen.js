@@ -330,10 +330,10 @@ const LessonScreen = ({ route, navigation }) => {
                 <Text style={styles.headerSubText}>{courseName}</Text>
               </View>
 
-            {lesson?.duration && (
+            {lesson?.duration_minutes && (
               <View style={styles.durationBadge}>
                 <MaterialCommunityIcons name="clock-outline" size={14} color={COLORS.white} />
-                <Text style={styles.durationText}>{lesson.duration}m</Text>
+                <Text style={styles.durationText}>{lesson.duration_minutes}m</Text>
               </View>
             )}
 

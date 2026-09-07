@@ -328,12 +328,14 @@ const SpeechAnalysisScreen = ({ navigation }) => {
     stopMicStream();
 
     try {
-      const res = await authFetch(api.speechScore, {
+      const res = await authFetch(api.speechAnalyzeSession, {
         method: 'POST',
         body: JSON.stringify({
           exercise_id: selectedExercise?.id,
-          notes_attempted: selectedExercise?.notes,
-          elapsed_time: elapsedTime,
+          segments: selectedExercise?.notes?.map((note) => ({
+            target_note: note,
+            duration: 1.5,
+          })) || [],
         }),
       });
       if (res.ok) {

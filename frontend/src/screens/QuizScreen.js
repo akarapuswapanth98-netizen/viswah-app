@@ -345,7 +345,19 @@ const QuizScreen = ({ route, navigation }) => {
 
   const saveScore = async () => {
     try {
-      const percentage = Math.round((score / quiz.questions.length) * 100);
+      const finalAnswers = [...answers];
+      if (finalAnswers.length < quiz.questions.length && selectedAnswer !== null) {
+        const lastQ = quiz.questions[currentIndex];
+        finalAnswers.push({
+          question: lastQ?.question,
+          options: lastQ?.options,
+          selected: selectedAnswer,
+          correct: lastQ?.correct,
+          isCorrect: selectedAnswer === lastQ?.correct,
+        });
+      }
+      const correctCount = finalAnswers.filter((a) => a.isCorrect).length;
+      const percentage = Math.round((correctCount / quiz.questions.length) * 100);
       await authFetch(api.progress, {
         method: 'POST',
         body: JSON.stringify({ lesson_id: parseInt(lessonId), completed: true, score: percentage }),

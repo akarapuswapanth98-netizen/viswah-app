@@ -95,11 +95,27 @@ const HomeScreen = ({ navigation }) => {
     try {
       const token = await getAuthToken();
       if (token) {
-        const enrolledRes = await authFetch(api.enrolled);
+        const [enrolledRes, progressRes] = await Promise.all([
+          authFetch(api.enrolled),
+          authFetch(api.progress),
+        ]);
         if (enrolledRes.ok) {
           const enrolledData = await enrolledRes.json();
           if (Array.isArray(enrolledData) && enrolledData.length > 0) {
-            setEnrolledCourses(enrolledData);
+            const allProgress = progressRes.ok ? (await progressRes.json()) : [];
+            const progressMap = {};
+            if (Array.isArray(allProgress)) {
+              allProgress.forEach((p) => {
+                if (!progressMap[p.lesson_id]) progressMap[p.lesson_id] = p;
+              });
+            }
+            const withProgress = enrolledData.map((c) => ({
+              ...c,
+              progress: allProgress.length > 0
+                ? allProgress.filter((p) => p.completed).length / Math.max(1, allProgress.length)
+                : 0,
+            }));
+            setEnrolledCourses(withProgress);
           }
         }
         const userRes = await authFetch(api.me);

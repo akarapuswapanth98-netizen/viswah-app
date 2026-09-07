@@ -175,20 +175,24 @@ const LoginScreen = ({ navigation }) => {
   const validate = () => {
     const newErrors = {};
 
-    if (!username.trim() || username.trim().length < 4) {
-      newErrors.username = 'Username must be at least 4 characters';
-    }
-    if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!isLogin) {
+    if (isLogin) {
+      if (!email.trim() || !email.includes('@')) {
+        newErrors.email = 'Please enter a valid email';
+      }
+    } else {
+      if (!username.trim() || username.trim().length < 4) {
+        newErrors.username = 'Username must be at least 4 characters';
+      }
       if (!email.trim() || !email.includes('@')) {
         newErrors.email = 'Please enter a valid email';
       }
       if (password !== confirmPassword) {
         newErrors.confirmPassword = 'Passwords do not match';
       }
+    }
+
+    if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     setErrors(newErrors);
@@ -359,10 +363,11 @@ const LoginScreen = ({ navigation }) => {
               ) : null}
 
               {renderInput(0, {
-                icon: 'account',
-                placeholder: 'Username',
-                value: username,
-                onChangeText: setUsername,
+                icon: isLogin ? 'email' : 'account',
+                placeholder: isLogin ? 'Email' : 'Username',
+                value: isLogin ? email : username,
+                onChangeText: isLogin ? setEmail : setUsername,
+                keyboardType: isLogin ? 'email-address' : 'default',
               })}
 
               {!isLogin &&

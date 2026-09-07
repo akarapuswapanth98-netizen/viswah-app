@@ -54,6 +54,7 @@ const CountUp = ({ target, duration = 1200, style }) => {
 const ProfileScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [progressData, setProgressData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -111,15 +112,20 @@ const ProfileScreen = ({ navigation }) => {
 
   const fetchUserData = async () => {
     try {
-      const [profileRes, coursesRes] = await Promise.all([
+      const [profileRes, coursesRes, progressRes] = await Promise.all([
         authFetch(api.me),
         authFetch(api.enrolled),
+        authFetch(api.progress),
       ]);
 
       if (profileRes.ok) setUser(await profileRes.json());
       if (coursesRes.ok) {
         const data = await coursesRes.json();
         setEnrolledCourses(Array.isArray(data) ? data : []);
+      }
+      if (progressRes.ok) {
+        const data = await progressRes.json();
+        setProgressData(Array.isArray(data) ? data : []);
       }
     } catch (e) {
       console.error(e);
@@ -135,8 +141,8 @@ const ProfileScreen = ({ navigation }) => {
 
   const getStats = () => {
     const coursesEnrolled = enrolledCourses.length;
-    const lessonsCompleted = enrolledCourses.filter((c) => c.progress > 0 || c.completed).length;
-    const quizzesPassed = enrolledCourses.filter((c) => (c.score || 0) >= 70).length;
+    const lessonsCompleted = progressData.filter((p) => p.completed).length;
+    const quizzesPassed = progressData.filter((p) => (p.score || 0) >= 70).length;
     const streak = Math.max(1, Math.floor(enrolledCourses.length * 1.5));
     return { coursesEnrolled, lessonsCompleted, quizzesPassed, streak };
   };

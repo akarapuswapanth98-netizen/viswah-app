@@ -102,22 +102,25 @@ const CourseScreen = ({ route, navigation }) => {
         authFetch(api.course(courseId)),
         authFetch(api.courseLessons(courseId)),
         authFetch(api.enrolled),
-        authFetch(`${api.progress}?course_id=${courseId}`),
+        authFetch(api.progress),
       ]);
 
+      let lessonsData = [];
       if (courseRes.ok) setCourse(await courseRes.json());
       if (lessonsRes.ok) {
-        const data = await lessonsRes.json();
-        setLessons(Array.isArray(data) ? data : []);
+        lessonsData = await lessonsRes.json();
+        setLessons(Array.isArray(lessonsData) ? lessonsData : []);
       }
       if (enrolledRes.ok) {
         const data = await enrolledRes.json();
         const enrolled = Array.isArray(data) ? data : [];
-        setIsEnrolled(enrolled.some((e) => e.course_id === parseInt(courseId)));
+        setIsEnrolled(enrolled.some((e) => e.id === parseInt(courseId)));
       }
       if (progressRes.ok) {
         const data = await progressRes.json();
-        setProgress(Array.isArray(data) ? data : []);
+        const allProgress = Array.isArray(data) ? data : [];
+        const lessonIds = lessonsData.map(l => l.id);
+        setProgress(allProgress.filter(p => lessonIds.includes(p.lesson_id)));
       }
     } catch (e) {
       console.error(e);

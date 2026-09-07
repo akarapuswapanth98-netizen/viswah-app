@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -128,10 +129,21 @@ const LyricsCreatorScreen = ({ navigation }) => {
     if (!lyrics.trim()) return;
     setSaveState('saving');
     try {
-      await authFetch(api.lyricsAnalyze, {
-        method: 'POST',
-        body: JSON.stringify({ lyrics: lyrics.trim() }),
+      const saved = JSON.parse(await AsyncStorage.getItem('savedLyrics') || '[]');
+      saved.push({
+        lyrics: lyrics.trim(),
+        topic,
+        genre: selectedStyle,
+        mood,
+        savedAt: new Date().toISOString(),
       });
+      await AsyncStorage.setItem('savedLyrics', JSON.stringify(saved));
+      try {
+        await authFetch(api.lyricsAnalyze, {
+          method: 'POST',
+          body: JSON.stringify({ lyrics: lyrics.trim() }),
+        });
+      } catch (_) {}
     } catch (e) {
       console.error('Save error:', e);
     } finally {
