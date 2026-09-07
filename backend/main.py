@@ -84,6 +84,7 @@ def health():
 
 
 MUSIC_ONTOLOGY_PATH = Path(__file__).parent / "data" / "music_ontology.json"
+INDIAN_MUSIC_PATH = Path(__file__).parent / "data" / "indian_music.json"
 
 
 @app.get("/api/v1/musicology/genres")
@@ -92,6 +93,45 @@ def get_musicology_genres():
         raise HTTPException(status_code=404, detail="Music ontology not found")
     with open(MUSIC_ONTOLOGY_PATH) as f:
         return json.load(f)
+
+
+@app.get("/api/v1/indian-music/ragas")
+def get_ragas():
+    if not INDIAN_MUSIC_PATH.exists():
+        raise HTTPException(status_code=404, detail="Indian music data not found")
+    with open(INDIAN_MUSIC_PATH) as f:
+        data = json.load(f)
+    return {"ragas": data.get("ragas", []), "thaat_system": data.get("thaat_system", [])}
+
+
+@app.get("/api/v1/indian-music/ragas/{raga_id}")
+def get_raga(raga_id: str):
+    if not INDIAN_MUSIC_PATH.exists():
+        raise HTTPException(status_code=404, detail="Indian music data not found")
+    with open(INDIAN_MUSIC_PATH) as f:
+        data = json.load(f)
+    for raga in data.get("ragas", []):
+        if raga["id"] == raga_id:
+            return raga
+    raise HTTPException(status_code=404, detail=f"Raga '{raga_id}' not found")
+
+
+@app.get("/api/v1/indian-music/talas")
+def get_talas():
+    if not INDIAN_MUSIC_PATH.exists():
+        raise HTTPException(status_code=404, detail="Indian music data not found")
+    with open(INDIAN_MUSIC_PATH) as f:
+        data = json.load(f)
+    return {"talas": data.get("talas", [])}
+
+
+@app.get("/api/v1/indian-music/sargam")
+def get_sargam_map():
+    if not INDIAN_MUSIC_PATH.exists():
+        raise HTTPException(status_code=404, detail="Indian music data not found")
+    with open(INDIAN_MUSIC_PATH) as f:
+        data = json.load(f)
+    return {"sargam_map": data.get("sargam_map", {}), "variations": data.get("variations", {})}
 
 
 if __name__ == "__main__":

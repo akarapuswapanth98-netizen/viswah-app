@@ -41,6 +41,10 @@ export const api = {
   lyricsAnalyze: `${API_URL}/api/lyrics/analyze`,
   lyricsFormat: `${API_URL}/api/lyrics/format`,
   musicologyGenres: `${API_URL}/api/v1/musicology/genres`,
+  indianMusicRagas: `${API_URL}/api/v1/indian-music/ragas`,
+  indianMusicRaga: (id) => `${API_URL}/api/v1/indian-music/ragas/${id}`,
+  indianMusicTalas: `${API_URL}/api/v1/indian-music/talas`,
+  indianMusicSargam: `${API_URL}/api/v1/indian-music/sargam`,
 };
 
 const TOKEN_KEY = '@viswah_token';

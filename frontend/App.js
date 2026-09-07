@@ -32,6 +32,7 @@ import SpeechAnalysisScreen from './src/screens/SpeechAnalysisScreen';
 import LyricsCreatorScreen from './src/screens/LyricsCreatorScreen';
 import PianoScreen from './src/screens/PianoScreen';
 import DrumsScreen from './src/screens/DrumsScreen';
+import MetronomeScreen from './src/screens/MetronomeScreen';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_WEB = Platform.OS === 'web';
@@ -391,6 +392,7 @@ function MainNavigator() {
               <Stack.Screen name="Profile" component={ProfileScreen} />
               <Stack.Screen name="Piano" component={PianoScreen} options={{ cardStyle: { backgroundColor: '#0B0D17' } }} />
               <Stack.Screen name="Drums" component={DrumsScreen} options={{ cardStyle: { backgroundColor: '#0B0D17' } }} />
+              <Stack.Screen name="Metronome" component={MetronomeScreen} options={{ cardStyle: { backgroundColor: '#0B0D17' } }} />
             </Stack.Navigator>
           </NavigationContainer>
         </View>

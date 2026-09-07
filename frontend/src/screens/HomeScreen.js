@@ -21,6 +21,7 @@ const SECTIONS = [
   { key: 'continueLearning', delay: 100 },
   { key: 'vocalGuru', delay: 200 },
   { key: 'instruments', delay: 300 },
+  { key: 'metronome', delay: 350 },
   { key: 'speechAnalysis', delay: 400 },
   { key: 'lyricsCreator', delay: 500 },
   { key: 'browseCourses', delay: 600 },
@@ -430,6 +431,33 @@ const HomeScreen = ({ navigation }) => {
       </View>
     ));
 
+  const renderMetronome = () =>
+    renderAnimatedSection('metronome', (
+      <View style={styles.sectionContainer}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate('Metronome')}
+        >
+          <View
+            style={[styles.featureCard, { background: 'linear-gradient(135deg, #F59E0B, #EF4444)' }]}
+          >
+            <View style={styles.featureCardContent}>
+              <View style={styles.featureCardLeft}>
+                <View style={styles.featureIconCircle}>
+                  <MaterialCommunityIcons name="metronome" size={24} color={COLORS.white} />
+                </View>
+                <View>
+                  <Text style={styles.featureTitle}>Metronome</Text>
+                  <Text style={styles.featureSub}>BPM, tap tempo & Indian talas</Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={24} color="rgba(255,255,255,0.6)" />
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    ));
+
   const renderSpeechAnalysis = () =>
     renderAnimatedSection('speechAnalysis', (
       <View style={styles.sectionContainer}>
@@ -597,6 +625,7 @@ const HomeScreen = ({ navigation }) => {
         {renderContinueLearning()}
         {renderVocalGuru()}
         {renderInstruments()}
+        {renderMetronome()}
         {renderSpeechAnalysis()}
         {renderLyricsCreator()}
         {renderBrowseCourses()}

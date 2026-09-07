@@ -6,6 +6,7 @@ import { GradientButton, Tag } from '../components/UIComponents';
 import { api, authFetch } from '../config/api';
 import { WaveformPath, FrequencyBars, ScoreRing } from '../components/VisualEffects';
 import { audioService } from '../services/AudioService';
+import PitchVisualizer from '../components/PitchVisualizer';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -69,12 +70,25 @@ const NOTE_FREQUENCIES = {
   'F#4': 369.99,
 };
 
+const SARGAM_MAP = { 'C': 'Sa', 'D': 'Re', 'E': 'Ga', 'F': 'Ma', 'G': 'Pa', 'A': 'Dha', 'B': 'Ni' };
+const KOMAL_MAP = { 'C#': 'Re♭', 'D#': 'Ga♭', 'F#': 'Ma♯', 'G#': 'Dha♭', 'A#': 'Ni♭' };
+
 const getNoteName = (freq) => {
   const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const midi = Math.round(12 * Math.log2(freq / 440) + 69);
   const octave = Math.floor(midi / 12) - 1;
   const noteIndex = midi % 12;
   return `${notes[noteIndex < 0 ? noteIndex + 12 : noteIndex]}${octave}`;
+};
+
+const getSargamName = (freq) => {
+  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const midi = Math.round(12 * Math.log2(freq / 440) + 69);
+  const noteIndex = midi % 12;
+  const noteName = notes[noteIndex < 0 ? noteIndex + 12 : noteIndex];
+  if (SARGAM_MAP[noteName]) return SARGAM_MAP[noteName];
+  if (KOMAL_MAP[noteName]) return KOMAL_MAP[noteName];
+  return noteName;
 };
 
 const SpeechAnalysisScreen = ({ navigation }) => {
@@ -87,6 +101,7 @@ const SpeechAnalysisScreen = ({ navigation }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [results, setResults] = useState(null);
   const [noteDots, setNoteDots] = useState([]);
+  const [isIndian, setIsIndian] = useState(false);
   const [noteDotAnimations, setNoteDotAnimations] = useState([]);
   const scoreRingAnim = useRef(new Animated.Value(0)).current;
   const [resultSlideAnims, setResultSlideAnims] = useState([]);
@@ -533,8 +548,22 @@ const SpeechAnalysisScreen = ({ navigation }) => {
 
           {isRecording && (
             <View style={styles.realTimePitchContainer}>
-              <Text style={styles.realTimePitchNote}>{detectedNote}</Text>
-              <Text style={styles.realTimePitchFreq}>{Math.round(currentPitch)} Hz</Text>
+              <PitchVisualizer
+                currentPitch={currentPitch}
+                targetNote={selectedExercise?.notes?.[currentNoteIndex]}
+                targetFreq={selectedExercise?.notes?.[currentNoteIndex] ? (440 * Math.pow(2, (['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].indexOf(selectedExercise.notes[currentNoteIndex]) - 9) / 12)) : 0}
+                isRecording={isRecording}
+                showSargam={isIndian}
+                centsDeviation={Math.round(((Math.log2(currentPitch / 440) * 12 + 49) % 1 - 0.5) * 100) || 0}
+                width={SCREEN_WIDTH - 80}
+                height={120}
+              />
+              <TouchableOpacity
+                style={styles.sargamToggle}
+                onPress={() => setIsIndian(!isIndian)}
+              >
+                <Text style={styles.sargamToggleText}>{isIndian ? 'Western' : 'Sargam'}</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -932,11 +961,20 @@ const styles = StyleSheet.create({
   realTimePitchContainer: {
     alignItems: 'center',
     marginTop: SPACING.md,
-    backgroundColor: COLORS.white,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
+  },
+  sargamToggle: {
+    marginTop: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.full,
-    ...SHADOWS.small,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
+  },
+  sargamToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   realTimePitchNote: {
     fontSize: 20,

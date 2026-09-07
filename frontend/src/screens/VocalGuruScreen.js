@@ -52,6 +52,9 @@ const TOPICS = [
   { key: 'breathing', title: 'Breathing', icon: 'weather-windy', difficulty: 'beginner' },
   { key: 'pitch', title: 'Pitch', icon: 'music-note', difficulty: 'intermediate' },
   { key: 'warmup', title: 'Warmup', icon: 'fire', difficulty: 'beginner' },
+  { key: 'sargam', title: 'Sargam (Sa Re Ga Ma)', icon: 'music-clef-treble', difficulty: 'intermediate', indianOnly: true },
+  { key: 'raga_basics', title: 'Raga Basics', icon: 'sitar', difficulty: 'intermediate', indianOnly: true },
+  { key: 'gamaka', title: 'Gamaka (Ornamentation)', icon: 'waveform', difficulty: 'advanced', indianOnly: true },
 ];
 
 const LESSON_STEPS = {
@@ -75,6 +78,30 @@ const LESSON_STEPS = {
     { id: 3, text: 'Tongue trills rolling "R" on scales', tip: 'Roll the tongue to relax jaw and throat tension.' },
     { id: 4, text: 'Sing "Mah-May-Mee-Moh-Moo" ascending', tip: 'Exaggerate vowel shapes for maximum benefit.' },
     { id: 5, text: 'Finish with gentle staccato notes on "Ha"', tip: 'Sharp, short breaths activate your diaphragm.' },
+  ],
+  sargam: [
+    { id: 1, text: 'Learn the 7 sargam swaras: Sa Re Ga Ma Pa Dha Ni', tip: 'Sa = tonic (your home note). All other notes relate to Sa.' },
+    { id: 2, text: 'Sing Sa - Re - Ga - Ma ascending slowly', tip: 'Focus on hitting each swara precisely. Use a tanpura drone.' },
+    { id: 3, text: 'Sing Pa - Dha - Ni - Sa_high ascending', tip: 'Upper tetrachord. Keep the same clarity as lower notes.' },
+    { id: 4, text: 'Sing the full scale: Sa Re Ga Ma Pa Dha Ni Sa_high', tip: 'Even spacing between notes. No rushing.' },
+    { id: 5, text: 'Descend: Sa_high Ni Dha Pa Ma Ga Re Sa', tip: 'Descending is harder. Control each note carefully.' },
+    { id: 6, text: 'Practice with a tanpura drone on Sa', tip: 'The drone helps your ear stay grounded in the tonic.' },
+  ],
+  raga_basics: [
+    { id: 1, text: 'Understand what a raga is: a melodic framework', tip: 'A raga is not just a scale — it has mood, time, and characteristic phrases.' },
+    { id: 2, text: 'Learn the arohana (ascending) of Raga Yaman', tip: 'Sa Re Ga tivra_Ma Pa Dha Ni Sa_high. Note: Ma is sharpened (tivra).' },
+    { id: 3, text: 'Learn the avarohana (descending) of Raga Yaman', tip: 'Sa_high Ni Dha Pa tivra_Ma Ga Re Sa. Same notes, different emphasis.' },
+    { id: 4, text: 'Practice Yaman\'s vadi (dominant) note: Ga', tip: 'Ga is the most important note in Yaman. Emphasize it in phrases.' },
+    { id: 5, text: 'Sing a characteristic Yaman phrase: Re Ga Ma Pa Dha Ni Sa_high', tip: 'This phrase captures the essence of Yaman. Repeat it 10 times.' },
+    { id: 6, text: 'Explore Yaman at evening time for authentic mood', tip: 'Ragas have prescribed times. Yaman is an evening raga (9 PM - 12 AM).' },
+  ],
+  gamaka: [
+    { id: 1, text: 'Understand gamaka: ornamentation in Indian music', tip: 'Gamaka are the oscillations and slides that give ragas their character.' },
+    { id: 2, text: 'Practice Meend (glide) between Sa and Re', tip: 'Slide smoothly from Sa to Re without hitting discrete notes in between.' },
+    { id: 3, text: 'Practice Kan Swar (grace notes) before the main note', tip: 'Quickly touch the note below before landing on the main swara.' },
+    { id: 4, text: 'Practice Andolan (gentle oscillation) on Komal Ga', tip: 'A slow, gentle shake on Komal Ga creates emotional depth.' },
+    { id: 5, text: 'Practice Krintan (rapid alternation) between two notes', tip: 'Quick, crisp alternation between adjacent swaras.' },
+    { id: 6, text: 'Combine gamakas in a Raga Bhairav phrase', tip: 'Use meend on komal_Re, andolan on komal_Dha for authentic Bhairav sound.' },
   ],
 };
 
@@ -444,7 +471,7 @@ const handleSpeak = async (text) => {
               <Animated.View style={[styles.topicsContainer, { opacity: fadeAnim }]}>
                 <Text style={styles.sectionTitle}>Choose a Topic</Text>
                 <View style={styles.topicsGrid}>
-                  {TOPICS.map((topic, index) => (
+                  {TOPICS.filter(t => !t.indianOnly || selectedGuru.id === 'carnatic').map((topic, index) => (
                     <Animated.View
                       key={topic.key}
                       style={{
