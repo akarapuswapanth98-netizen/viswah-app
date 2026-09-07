@@ -33,10 +33,9 @@ const ENROLLED_COURSES = [
 ];
 
 const BROWSE_COURSES = [
-  { id: 4, title: 'Advanced Vocal', difficulty: 'advanced', stage: 3, instrument: 'vocal', progress: 0 },
-  { id: 5, title: 'Jazz Piano', difficulty: 'intermediate', stage: 2, instrument: 'piano', progress: 0 },
-  { id: 6, title: 'Drum Grooves', difficulty: 'beginner', stage: 1, instrument: 'drums', progress: 0 },
-  { id: 7, title: 'Music Theory', difficulty: 'beginner', stage: 1, instrument: 'vocal', progress: 0 },
+  { id: 4, title: 'Piano for Beginners', difficulty: 'beginner', stage: 1, instrument: 'piano', progress: 0 },
+  { id: 5, title: 'Intermediate Piano', difficulty: 'intermediate', stage: 2, instrument: 'piano', progress: 0 },
+  { id: 6, title: 'Drum Basics', difficulty: 'beginner', stage: 1, instrument: 'drums', progress: 0 },
 ];
 
 const getGreeting = () => {
@@ -105,7 +104,7 @@ const HomeScreen = ({ navigation }) => {
         const userRes = await authFetch(api.me);
         if (userRes.ok) {
           const userData = await userRes.json();
-          if (userData.name) setUsername(userData.name.split(' ')[0]);
+          if (userData.username) setUsername(userData.username.split(' ')[0]);
         }
       }
       const coursesRes = await authFetch(api.courses);
@@ -114,6 +113,7 @@ const HomeScreen = ({ navigation }) => {
         if (Array.isArray(coursesData)) setCourses(coursesData);
       }
     } catch (error) {
+      console.warn('Failed to load data:', error.message);
     } finally {
       setLoading(false);
     }

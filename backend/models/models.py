@@ -60,7 +60,7 @@ class Lesson(Base):
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     title = Column(String(100))
     content = Column(Text)
-    audio_url = Column(String(200))
+    audio_url = Column(String(200), nullable=True)
     order = Column(Integer)
     lesson_type = Column(String(20))
     duration_minutes = Column(Integer)

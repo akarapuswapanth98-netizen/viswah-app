@@ -161,6 +161,7 @@ async def upload_audio(file: UploadFile = File(...)):
 
             # Find the 'data' chunk
             data_offset = 44
+            chunk_size = 0
             while data_offset < len(contents) - 8:
                 chunk_id = contents[data_offset:data_offset + 4]
                 chunk_size = struct.unpack_from('<I', contents, data_offset + 4)[0]
