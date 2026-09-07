@@ -135,7 +135,7 @@ const ProfileScreen = ({ navigation }) => {
 
   const getStats = () => {
     const coursesEnrolled = enrolledCourses.length;
-    const lessonsCompleted = enrolledCourses.filter((c) => c.completed).length;
+    const lessonsCompleted = enrolledCourses.filter((c) => c.progress > 0 || c.completed).length;
     const quizzesPassed = enrolledCourses.filter((c) => (c.score || 0) >= 70).length;
     const streak = Math.max(1, Math.floor(enrolledCourses.length * 1.5));
     return { coursesEnrolled, lessonsCompleted, quizzesPassed, streak };

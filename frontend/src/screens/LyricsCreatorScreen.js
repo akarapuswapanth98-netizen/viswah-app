@@ -149,9 +149,16 @@ const LyricsCreatorScreen = ({ navigation }) => {
   const handleShare = async () => {
     if (!lyrics.trim()) return;
     try {
-      await Share.share({ message: lyrics, title: `Lyrics about ${topic}` });
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ text: lyrics, title: `Lyrics about ${topic}` });
+      } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(lyrics);
+        alert('Lyrics copied to clipboard!');
+      } else {
+        alert('Sharing not available on this browser.');
+      }
     } catch (e) {
-      console.error('Share error:', e);
+      if (e?.name !== 'AbortError') console.error('Share error:', e);
     }
   };
 

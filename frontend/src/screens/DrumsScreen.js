@@ -106,7 +106,7 @@ const DrumsScreen = ({ navigation }) => {
     if (!sound) return;
 
     const velGain = 0.5 + velocity * 0.5;
-    Vibration.vibrate(20);
+    if (Platform.OS !== 'web') { try { Vibration.vibrate(20); } catch (e) {} }
 
     // Main impact noise burst
     const bufferSize = ctx.sampleRate * 0.08;
@@ -220,10 +220,13 @@ const DrumsScreen = ({ navigation }) => {
 
   const playRecording = useCallback((rec) => {
     setPlaying(true);
+    const timers = [];
     rec.hits.forEach(hit => {
-      setTimeout(() => playPadSound(hit.padId, hit.velocity), hit.time);
+      timers.push(setTimeout(() => playPadSound(hit.padId, hit.velocity), hit.time));
     });
-    setTimeout(() => setPlaying(false), Math.max(...rec.hits.map(h => h.time)) + 500);
+    const maxTime = rec.hits.length > 0 ? Math.max(...rec.hits.map(h => h.time)) : 0;
+    timers.push(setTimeout(() => setPlaying(false), maxTime + 500));
+    return () => timers.forEach(t => clearTimeout(t));
   }, [playPadSound]);
 
   const handlePadPress = useCallback((padId, e) => {

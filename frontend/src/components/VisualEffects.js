@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, StyleSheet, Platform } from 'react-native';
-import Svg, { Circle, Defs, RadialGradient, Stop, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Stop, Path, Rect } from 'react-native-svg';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedRect = Animated.createAnimatedComponent(Rect);

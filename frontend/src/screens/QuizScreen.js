@@ -97,7 +97,7 @@ const ConfettiParticle = ({ delay, color }) => {
 };
 
 const QuizScreen = ({ route, navigation }) => {
-  const { lessonId, lessonTitle, courseId } = route.params;
+  const { lessonId, lessonTitle, courseId } = route.params || {};
   const [quiz, setQuiz] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -113,6 +113,7 @@ const QuizScreen = ({ route, navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const optionFades = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
   const selectedScale = useRef(new Animated.Value(1)).current;
+  const unselectedScale = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const correctPulse = useRef(new Animated.Value(0)).current;
   const scoreCircleAnim = useRef(new Animated.Value(0)).current;
@@ -660,7 +661,7 @@ let borderColor = COLORS.surfaceBorder;
                   {
                     opacity: optionFades[index],
                     transform: [
-                      { scale: isSelected && !answered ? selectedScale : new Animated.Value(1) },
+                      { scale: isSelected && !answered ? selectedScale : unselectedScale },
                       ...(showWrong ? [{ translateX: shakeAnim }] : []),
                     ],
                   },

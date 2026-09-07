@@ -94,7 +94,7 @@ const PianoScreen = ({ navigation }) => {
       gainNodeRef.current.gain.value = PRESETS[preset].gain;
       gainNodeRef.current.connect(analyserRef.current);
       analyserRef.current.connect(audioCtxRef.current.destination);
-      if (reverbOn) {
+      if (!reverbNodeRef.current) {
         reverbNodeRef.current = audioCtxRef.current.createConvolver();
         const len = audioCtxRef.current.sampleRate * 1.5;
         const buf = audioCtxRef.current.createBuffer(2, len, audioCtxRef.current.sampleRate);
@@ -103,7 +103,7 @@ const PianoScreen = ({ navigation }) => {
           for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
         }
         reverbNodeRef.current.buffer = buf;
-        reverbNodeRef.current.connect(gainNodeRef.current);
+        reverbNodeRef.current.connect(audioCtxRef.current.destination);
       }
     }
     if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
@@ -133,14 +133,18 @@ const PianoScreen = ({ navigation }) => {
       gain.gain.linearRampToValueAtTime(0, now + settings.attack + settings.decay + settings.release);
     }
 
-    osc.connect(reverbOn && reverbNodeRef.current ? reverbNodeRef.current : gain);
-    gain.connect(reverbOn && reverbNodeRef.current ? reverbNodeRef.current : gainNodeRef.current);
+    osc.connect(gain);
+    if (reverbOn && reverbNodeRef.current) {
+      gain.connect(reverbNodeRef.current);
+    } else {
+      gain.connect(gainNodeRef.current);
+    }
     osc.start(now);
     osc.stop(now + settings.attack + settings.decay + settings.release + 0.1);
 
     setActiveKeys(prev => ({ ...prev, [note.note]: true }));
     setVelocityMap(prev => ({ ...prev, [note.note]: velSetting.label }));
-    Vibration.vibrate(15);
+    if (Platform.OS !== 'web') { try { Vibration.vibrate(15); } catch (e) {} }
 
     if (recording) {
       const elapsed = Date.now() - recordStartRef.current;
@@ -204,13 +208,15 @@ const PianoScreen = ({ navigation }) => {
 
   const playRecording = useCallback((rec) => {
     setPlayback(true);
+    const timers = [];
     rec.notes.forEach(n => {
       const noteObj = NOTES.find(nn => nn.note === n.note);
       if (noteObj) {
-        setTimeout(() => playNote(noteObj, n.velocity), n.time);
+        timers.push(setTimeout(() => playNote(noteObj, n.velocity), n.time));
       }
     });
-    setTimeout(() => setPlayback(false), Math.max(...rec.notes.map(n => n.time)) + 1500);
+    timers.push(setTimeout(() => setPlayback(false), Math.max(...rec.notes.map(n => n.time)) + 1500));
+    return () => timers.forEach(t => clearTimeout(t));
   }, [playNote]);
 
   const deleteRecording = useCallback((id) => {

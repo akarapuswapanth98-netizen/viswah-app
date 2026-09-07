@@ -39,7 +39,7 @@ const INSTRUMENT_ICONS = {
 };
 
 const CourseScreen = ({ route, navigation }) => {
-  const { courseId } = route.params;
+  const { courseId } = route.params || {};
   const [course, setCourse] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [progress, setProgress] = useState([]);

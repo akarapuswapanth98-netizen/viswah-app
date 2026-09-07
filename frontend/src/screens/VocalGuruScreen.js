@@ -572,7 +572,7 @@ onPress={() => {
         {lessonComplete && (
           <Animated.View style={[styles.summaryPanel, { opacity: fadeAnim }]}>
             <Text style={styles.summaryTitle}>Great Job!</Text>
-            <Text style={styles.summarySubtitle}>You completed the {currentLesson.topic} lesson</Text>
+            <Text style={styles.summarySubtitle}>You completed the {currentLesson?.topic || 'vocal'} lesson</Text>
 
             <ScoreRing score={Math.round((Object.values(completedSteps).filter(Boolean).length / (currentLesson?.steps?.length || 1)) * 100)} />
             <StarRating count={Math.min(5, Math.max(1, Math.ceil(Object.values(completedSteps).filter(Boolean).length / (currentLesson?.steps?.length || 1) * 5)))} />

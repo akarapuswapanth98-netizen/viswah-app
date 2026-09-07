@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -20,7 +19,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import Sidebar from './src/components/Sidebar';
 import TopBar from './src/components/TopBar';
 import AmbientBackground from './src/components/AmbientBackground';
-import { COLORS, createGradient, BORDER_RADIUS, SHADOWS, LAYOUT, GLASS } from './src/theme';
+import { COLORS, BORDER_RADIUS, SHADOWS, LAYOUT, GLASS } from './src/theme';
 
 import HomeScreen from './src/screens/HomeScreen';
 import CourseScreen from './src/screens/CourseScreen';
@@ -38,6 +37,17 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_WEB = Platform.OS === 'web';
 const IS_DESKTOP = IS_WEB && SCREEN_WIDTH > 900;
 const Stack = createStackNavigator();
+
+const cssGrad = (colors) => {
+  if (!colors || colors.length < 2) return {};
+  if (IS_WEB) return { background: `linear-gradient(135deg, ${colors.join(', ')})` };
+  return { backgroundColor: colors[0] };
+};
+const cssGradH = (colors) => {
+  if (!colors || colors.length < 2) return {};
+  if (IS_WEB) return { background: `linear-gradient(90deg, ${colors.join(', ')})` };
+  return { backgroundColor: colors[0] };
+};
 
 const Particle = ({ delay, color }) => {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT + 20)).current;
@@ -115,10 +125,12 @@ const SplashScreen = ({ onFinish }) => {
   const progressWidth = useRef(new Animated.Value(0)).current;
   const taglineOpacity = useRef(new Animated.Value(0)).current;
   const taglineY = useRef(new Animated.Value(20)).current;
+  const finishedRef = useRef(false);
   const noteSymbols = ['♪', '♫', '♬', '♩', '♪', '♫'];
   const particles = useMemo(() => Array.from({ length: 20 }, (_, i) => ({ id: i, delay: Math.random() * 2000, color: ['#8A2BE2', '#00F5D4', '#FF007F', '#FFC107', '#00D4FF'][Math.floor(Math.random() * 5)] })), []);
 
   useEffect(() => {
+    const finishOnce = () => { if (!finishedRef.current) { finishedRef.current = true; onFinish(); } };
     Animated.parallel([
       Animated.spring(logoScale, { toValue: 1, tension: 40, friction: 7, useNativeDriver: true }),
       Animated.timing(logoOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
@@ -131,14 +143,14 @@ const SplashScreen = ({ onFinish }) => {
         Animated.timing(taglineY, { toValue: 0, duration: 500, useNativeDriver: true }),
       ]),
     ]).start();
-    Animated.timing(progressWidth, { toValue: 1, duration: 2500, useNativeDriver: false }).start(() => { setTimeout(onFinish, 300); });
+    Animated.timing(progressWidth, { toValue: 1, duration: 2500, useNativeDriver: false }).start(() => { setTimeout(finishOnce, 300); });
   }, []);
 
   const progressInterpolate = progressWidth.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   return (
     <View style={styles.splashContainer}>
-      <LinearGradient {...createGradient(['#0B0D17', '#111424', '#161B30'])} style={styles.splashGradient}>
+      <View style={[styles.splashGradient, cssGrad(['#0B0D17', '#111424', '#161B30'])]}>
         <View style={styles.particlesContainer}>
           {particles.map((p) => (<Particle key={p.id} delay={p.delay} color={p.color} />))}
         </View>
@@ -147,9 +159,9 @@ const SplashScreen = ({ onFinish }) => {
         </View>
         <Animated.View style={[styles.logoContainer, { opacity: logoOpacity, transform: [{ scale: logoScale }, { rotate: logoRotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }]}>
           <View style={styles.logoCircle}>
-            <LinearGradient colors={['#8A2BE2', '#00F5D4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logoGradientBg}>
+            <View style={[styles.logoGradientBg, cssGrad(['#8A2BE2', '#00F5D4'])]}>
               <MaterialCommunityIcons name="music-note" size={60} color={COLORS.white} />
-            </LinearGradient>
+            </View>
           </View>
           <Text style={styles.splashTitle}>VISWAH</Text>
           <Animated.Text style={[styles.splashTagline, { opacity: taglineOpacity, transform: [{ translateY: taglineY }] }]}>
@@ -160,9 +172,9 @@ const SplashScreen = ({ onFinish }) => {
           <View style={styles.progressBarBg}>
             <Animated.View style={[styles.progressBarFill, { width: progressInterpolate }]} />
           </View>
-          <Text style={styles.loadingText}>Loading your experience...</Text>
+           <Text style={styles.loadingText}>Loading your experience...</Text>
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 };
@@ -178,7 +190,7 @@ const ConfettiParticle = ({ x, y, color, delay }) => {
   const yDist = useMemo(() => -(Math.random() * 150 + 60), []);
 
   useEffect(() => {
-    setTimeout(() => {
+    let timer = setTimeout(() => {
       Animated.parallel([
         Animated.timing(translateX, { toValue: xDist, duration: 900, useNativeDriver: true }),
         Animated.timing(translateY, { toValue: yDist, duration: 900, useNativeDriver: true }),
@@ -186,6 +198,7 @@ const ConfettiParticle = ({ x, y, color, delay }) => {
         Animated.sequence([Animated.delay(400), Animated.timing(opacity, { toValue: 0, duration: 500, useNativeDriver: true })]),
       ]).start();
     }, delay);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -251,7 +264,7 @@ const OnboardingFlow = ({ onComplete }) => {
 
   const confettiParticles = useMemo(() => Array.from({ length: 30 }, (_, i) => ({ id: i, x: SCREEN_WIDTH / 2 + (Math.random() - 0.5) * 20, y: SCREEN_HEIGHT - 140, color: ['#8A2BE2', '#00F5D4', '#FF007F', '#FFC107', '#00D4FF'][Math.floor(Math.random() * 5)], delay: Math.random() * 300 })), []);
 
-  useEffect(() => { Animated.loop(Animated.sequence([Animated.timing(pulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver: true }), Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true })])).start(); }, []);
+  useEffect(() => { const anim = Animated.loop(Animated.sequence([Animated.timing(pulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver: true }), Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true })])); anim.start(); return () => anim.stop(); }, []);
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => { if (viewableItems.length > 0) setCurrentIndex(viewableItems[0].index || 0); }).current;
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
@@ -264,7 +277,7 @@ const OnboardingFlow = ({ onComplete }) => {
 
   const renderOnboardingItem = ({ item }) => (
     <View style={styles.onboardingPage}>
-      <LinearGradient {...createGradient(item.gradient)} style={styles.onboardingGradient}>
+      <View style={[styles.onboardingGradient, cssGrad(item.gradient)]}>
         <View style={styles.illustrationArea}>
           <Animated.View style={[styles.illustContainer, { transform: [{ scale: pulseAnim }] }]}>
             {item.illustration === 'piano' && <PianoIllustration />}
@@ -276,7 +289,7 @@ const OnboardingFlow = ({ onComplete }) => {
           <Text style={styles.onboardingTitle}>{item.title}</Text>
           <Text style={styles.onboardingSubtitle}>{item.subtitle}</Text>
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 
@@ -301,20 +314,20 @@ const OnboardingFlow = ({ onComplete }) => {
             {showConfetti && confettiParticles.map((p) => (<ConfettiParticle key={p.id} x={p.x} y={p.y} color={p.color} delay={p.delay} />))}
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
               <TouchableOpacity activeOpacity={0.85} onPress={handleGetStarted}>
-                <LinearGradient colors={['#8A2BE2', '#00F5D4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.getStartedBtn}>
+                <View style={[styles.getStartedBtn, cssGradH(['#8A2BE2', '#00F5D4'])]}>
                   <Text style={styles.getStartedText}>Get Started</Text>
                   <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
             </Animated.View>
           </View>
         ) : (
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
             <TouchableOpacity activeOpacity={0.85} onPress={handleNext}>
-              <LinearGradient colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.08)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
+              <View style={[styles.nextBtn, cssGradH(['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.08)'])]}>
                 <Text style={styles.nextBtnText}>Next</Text>
                 <MaterialCommunityIcons name="arrow-right" size={18} color={COLORS.neon} />
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -330,22 +343,6 @@ const forSlideFade = ({ current, layouts }) => ({
   },
 });
 
-const FULL_SCREEN_ROUTES = ['Piano', 'Drums'];
-
-function DesktopLayout({ children }) {
-  return (
-    <View style={styles.desktopRoot}>
-      <Sidebar navigation={children.props?.navigation} currentRoute={children.props?.route?.name} />
-      <View style={styles.desktopMain}>
-        <TopBar />
-        <View style={styles.desktopContent}>
-          {children}
-        </View>
-      </View>
-      <AmbientBackground />
-    </View>
-  );
-}
 
 function MainNavigator() {
   const [currentRoute, setCurrentRoute] = useState('Home');

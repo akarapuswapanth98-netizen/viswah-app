@@ -1,8 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, BORDER_RADIUS, SHADOWS, SPACING, createGradient } from '../theme';
+import { COLORS, BORDER_RADIUS, SHADOWS, SPACING } from '../theme';
+
+const cssGradient = (colors) => {
+  if (!colors || colors.length < 2) return {};
+  if (Platform.OS === 'web') return { background: `linear-gradient(135deg, ${colors.join(', ')})` };
+  return { backgroundColor: colors[0] };
+};
 
 // Gradient Button
 export const GradientButton = ({ 
@@ -20,10 +25,7 @@ export const GradientButton = ({
     style={[styles.buttonContainer, style]}
     activeOpacity={0.8}
   >
-    <LinearGradient
-      {...createGradient(colors)}
-      style={[styles.button, disabled && styles.buttonDisabled]}
-    >
+    <View style={[styles.button, cssGradient(colors), disabled && styles.buttonDisabled]}>
       {loading ? (
         <MaterialCommunityIcons name="loading" size={20} color={COLORS.white} />
       ) : icon ? (
@@ -32,7 +34,7 @@ export const GradientButton = ({
       <View style={[styles.buttonTextContainer, icon && { marginLeft: SPACING.sm }]}>
         <Text style={styles.buttonText}>{title}</Text>
       </View>
-    </LinearGradient>
+    </View>
   </TouchableOpacity>
 );
 
@@ -45,10 +47,7 @@ export const GradientCard = ({
   icon,
 }) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
-    <LinearGradient
-      {...createGradient(colors)}
-      style={[styles.card, style]}
-    >
+    <View style={[styles.card, cssGradient(colors), style]}>
       {icon && (
         <MaterialCommunityIcons 
           name={icon} 
@@ -58,7 +57,7 @@ export const GradientCard = ({
         />
       )}
       {children}
-    </LinearGradient>
+    </View>
   </TouchableOpacity>
 );
 
@@ -88,12 +87,9 @@ export const Avatar = ({
 }) => (
   <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }, style]}>
     {gradient ? (
-      <LinearGradient
-        {...createGradient(gradient)}
-        style={[styles.avatarGradient, { borderRadius: size / 2 }]}
-      >
+      <View style={[styles.avatarGradient, cssGradient(gradient), { borderRadius: size / 2 }]}>
         {icon && <MaterialCommunityIcons name={icon} size={size * 0.5} color={COLORS.white} />}
-      </LinearGradient>
+      </View>
     ) : (
       <>
         {icon && <MaterialCommunityIcons name={icon} size={size * 0.5} color={COLORS.white} />}

@@ -271,27 +271,26 @@ const SpeechAnalysisScreen = ({ navigation }) => {
 
     noteAdvanceRef.current = setInterval(() => {
       if (!isRecordingRef.current || stoppingRef.current) return;
-      setCurrentNoteIndex((prev) => {
-        currentNoteIndexRef.current = prev;
-        if (prev < selectedExercise.notes.length - 1) {
-          const next = prev + 1;
-          setNoteDots((dots) => {
-            const updated = [...dots];
-            updated[prev] = 'done';
-            return updated;
-          });
-          animateNoteDot(prev);
-          return next;
-        }
+      const nextIdx = currentNoteIndexRef.current + 1;
+      const totalNotes = selectedExercise.notes.length;
+      if (nextIdx < totalNotes) {
         setNoteDots((dots) => {
           const updated = [...dots];
-          updated[prev] = 'done';
+          updated[currentNoteIndexRef.current] = 'done';
           return updated;
         });
-        animateNoteDot(prev);
+        animateNoteDot(currentNoteIndexRef.current);
+        currentNoteIndexRef.current = nextIdx;
+        setCurrentNoteIndex(nextIdx);
+      } else {
+        setNoteDots((dots) => {
+          const updated = [...dots];
+          updated[currentNoteIndexRef.current] = 'done';
+          return updated;
+        });
+        animateNoteDot(currentNoteIndexRef.current);
         handleStopRecording();
-        return prev;
-      });
+      }
     }, 1500);
   };
 

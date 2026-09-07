@@ -13,7 +13,7 @@ import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme';
 import { api, authFetch } from '../config/api';
 
 const LessonScreen = ({ route, navigation }) => {
-  const { lessonId, courseId, courseName } = route.params;
+  const { lessonId, courseId, courseName } = route.params || {};
   const [lesson, setLesson] = useState(null);
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);

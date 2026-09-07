@@ -131,8 +131,6 @@ const styles2 = StyleSheet.create({
   },
 });
 
-// Merge styles
-const mergedStyles = { ...styles, ...styles2 };
 styles.tiltCard = styles2.tiltCard;
 styles.tiltGlow = styles2.tiltGlow;
 
